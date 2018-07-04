@@ -63,7 +63,6 @@ Return Value:
     ULONG WaitResult;
     GRAPH_INFO Info;
     PBYTE Unusable;
-    ULONG LastError;
     ULONG NumberOfKeys;
     BOOLEAN CaughtException;
     PALLOCATOR Allocator;
@@ -154,9 +153,10 @@ RetryWithLargerTableSize:
 
     for (Index = 0; Index < NumberOfEvents; Index++, Event++) {
 
-        ASSERT(*Event && *Event != INVALID_HANDLE_VALUE);
-        ASSERT(ResetEvent(*Event));
-
+        if (!ResetEvent(*Event)) {
+            SYS_ERROR(ResetEvent);
+            goto Error;
+        }
     }
 
     //
@@ -524,8 +524,8 @@ RetryWithLargerTableSize:
                                          &BaseAddress);
 
     if (!Success) {
-        LastError = GetLastError();
-        return FALSE;
+        SYS_ERROR(VirtualAlloc);
+        goto Error;
     }
 
     //
@@ -921,7 +921,10 @@ RetryWithLargerTableSize:
 
         WaitResult = WaitForSingleObject(Context->PreparedFileEvent, INFINITE);
 
-        ASSERT(WaitResult == WAIT_OBJECT_0);
+        if (WaitResult != WAIT_OBJECT_0) {
+            SYS_ERROR(WaitForSingleObject);
+            goto Error;
+        }
 
         //
         // There are no more threadpool callbacks running.  However, a thread
@@ -936,10 +939,13 @@ RetryWithLargerTableSize:
 
         //
         // Destroy the existing buffer we allocated for this attempt.  We'll
-        // need a new, larger one to accomodate the resize.
+        // need a new, larger one to accommodate the resize.
         //
 
-        ASSERT(Rtl->DestroyBuffer(Rtl, ProcessHandle, &BaseAddress));
+        if (!Rtl->DestroyBuffer(Rtl, ProcessHandle, &BaseAddress)) {
+            SYS_ERROR(VirtualFree);
+            goto Error;
+        }
 
         //
         // Increment the resize counter and update the total number of attempts
@@ -995,18 +1001,23 @@ RetryWithLargerTableSize:
         Table->RequestedNumberOfTableElements.QuadPart <<= 1ULL;
 
         if (Table->RequestedNumberOfTableElements.HighPart) {
-            Success = FALSE;
-            goto End;
+            goto Error;
         }
 
         //
         // Unmap the existing mapping and close the section.
         //
 
-        ASSERT(UnmapViewOfFile(Table->BaseAddress));
+        if (!UnmapViewOfFile(Table->BaseAddress)) {
+            SYS_ERROR(UnmapViewOfFile);
+            goto Error;
+        }
         Table->BaseAddress = NULL;
 
-        ASSERT(CloseHandle(Table->MappingHandle));
+        if (!CloseHandle(Table->MappingHandle)) {
+            SYS_ERROR(CloseHandle);
+            goto Error;
+        }
         Table->MappingHandle = NULL;
 
         //
@@ -1042,7 +1053,10 @@ RetryWithLargerTableSize:
 
             WaitResult = WaitForSingleObject(Context->ShutdownEvent, 0);
 
-            ASSERT(WaitResult == WAIT_OBJECT_0);
+            if (WaitResult != WAIT_OBJECT_0) {
+                SYS_ERROR(WaitForSingleObject);
+                goto Error;
+            }
         }
 
         //
@@ -1107,10 +1121,13 @@ FinishedSolution:
     //
 
     WaitResult = WaitForSingleObject(Context->PreparedFileEvent, INFINITE);
-    if (WaitResult != WAIT_OBJECT_0 || Context->FileWorkErrors > 0) {
-        __debugbreak();
-        Success = FALSE;
-        goto End;
+    if (WaitResult != WAIT_OBJECT_0) {
+        SYS_ERROR(WaitForSingleObject);
+        goto Error;
+    }
+
+    if (Context->FileWorkErrors > 0) {
+        goto Error;
     }
 
     //
@@ -1140,19 +1157,43 @@ FinishedSolution:
     // write the final timing details to the on-disk header.
     //
 
-    SetEvent(Context->VerifiedEvent);
+    if (!SetEvent(Context->VerifiedEvent)) {
+        SYS_ERROR(SetEvent);
+        goto Error;
+    }
 
-    ASSERT(Success);
+    if (!Success) {
+        goto Error;
+    }
 
     //
     // Wait on the saved file event before returning.
     //
 
     WaitResult = WaitForSingleObject(Context->SavedFileEvent, INFINITE);
-    if (WaitResult != WAIT_OBJECT_0 || Context->FileWorkErrors > 0) {
-        __debugbreak();
-        Success = FALSE;
+    if (WaitResult != WAIT_OBJECT_0) {
+        SYS_ERROR(WaitForSingleObject);
+        goto Error;
     }
+
+    if (Context->FileWorkErrors > 0) {
+        goto Error;
+    }
+
+    //
+    // We're done, indicate success and finish up.
+    //
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    Success = FALSE;
+
+    //
+    // Intentional follow-on to End.
+    //
 
 End:
 
@@ -1165,7 +1206,10 @@ End:
     //
 
     if (BaseAddress) {
-        Rtl->DestroyBuffer(Rtl, ProcessHandle, &BaseAddress);
+        if (!Rtl->DestroyBuffer(Rtl, ProcessHandle, &BaseAddress)) {
+            Success = FALSE;
+            SYS_ERROR(VirtualFree);
+        }
     }
 
     //
@@ -1177,9 +1221,10 @@ End:
 
     for (Index = 0; Index < NumberOfEvents; Index++, Event++) {
 
-        ASSERT(*Event && *Event != INVALID_HANDLE_VALUE);
-        ASSERT(ResetEvent(*Event));
-
+        if (!ResetEvent(*Event)) {
+            Success = FALSE;
+            SYS_ERROR(ResetEvent);
+        }
     }
 
     return Success;
@@ -1361,6 +1406,7 @@ Return Value:
 
 --*/
 {
+    PRTL Rtl;
     HANDLE SavedEvent;
     HANDLE PreparedEvent;
     HANDLE SetOnReturnEvent;
@@ -1372,6 +1418,7 @@ Return Value:
     // Initialize aliases.
     //
 
+    Rtl = Context->Rtl;
     Info = (PGRAPH_INFO)Context->AlgorithmContext;
     SavedEvent = Context->SavedFileEvent;
     PreparedEvent = Context->PreparedFileEvent;
@@ -1402,7 +1449,7 @@ Return Value:
             SetOnReturnEvent = PreparedEvent;
 
             //
-            // We need to extend the file to accomodate for the solved graph.
+            // We need to extend the file to accommodate for the solved graph.
             //
 
             SectorAlignedSize.QuadPart = ALIGN_UP(Info->AssignedSizeInBytes,
@@ -1425,15 +1472,8 @@ Return Value:
             Table->MappingHandle = MappingHandle;
 
             if (!MappingHandle || MappingHandle == INVALID_HANDLE_VALUE) {
-
-                //
-                // Fatal error: debugbreak for now.
-                //
-
-                Context->FileWorkLastError = GetLastError();
-                InterlockedIncrement(&Context->FileWorkErrors);
-                __debugbreak();
-                break;
+                SYS_ERROR(CreateFileMappingW);
+                goto Error;
             }
 
             BaseAddress = MapViewOfFile(MappingHandle,
@@ -1445,15 +1485,8 @@ Return Value:
             Table->BaseAddress = BaseAddress;
 
             if (!BaseAddress) {
-
-                //
-                // Also a fatal error.
-                //
-
-                Context->FileWorkLastError = GetLastError();
-                InterlockedIncrement(&Context->FileWorkErrors);
-                __debugbreak();
-                break;
+                SYS_ERROR(MapViewOfFile);
+                goto Error;
             }
 
             CONTEXT_END_TIMERS(PrepareFile);
@@ -1526,7 +1559,10 @@ Return Value:
             // another wait state where we're not doing anything useful.
             //
 
-            ASSERT(FlushFileBuffers(Table->FileHandle));
+            if (!FlushFileBuffers(Table->FileHandle)) {
+                SYS_ERROR(FlushFileBuffers);
+                goto Error;
+            }
 
             //
             // Stop the save file timer here, after flushing the file buffers,
@@ -1543,7 +1579,10 @@ Return Value:
             //
 
             WaitResult = WaitForSingleObject(Context->VerifiedEvent, INFINITE);
-            ASSERT(WaitResult == WAIT_OBJECT_0);
+            if (WaitResult != WAIT_OBJECT_0) {
+                SYS_ERROR(WaitForSingleObject);
+                goto Error;
+            }
 
             //
             // When we mapped the array in the work item above, we used a size
@@ -1555,10 +1594,16 @@ Return Value:
             // close the file handle.
             //
 
-            ASSERT(UnmapViewOfFile(Table->BaseAddress));
+            if (!UnmapViewOfFile(Table->BaseAddress)) {
+                SYS_ERROR(UnmapViewOfFile);
+                goto Error;
+            }
             Table->BaseAddress = NULL;
 
-            ASSERT(CloseHandle(Table->MappingHandle));
+            if (!CloseHandle(Table->MappingHandle)) {
+                SYS_ERROR(UnmapViewOfFile);
+                goto Error;
+            }
             Table->MappingHandle = NULL;
 
             EndOfFile.QuadPart = SizeInBytes;
@@ -1568,11 +1613,21 @@ Return Value:
                                        NULL,
                                        FILE_BEGIN);
 
-            ASSERT(Success);
+            if (!Success) {
+                SYS_ERROR(SetFilePointerEx);
+                goto Error;
+            }
 
-            ASSERT(SetEndOfFile(Table->FileHandle));
+            if (!SetEndOfFile(Table->FileHandle)) {
+                SYS_ERROR(SetEndOfFile);
+                goto Error;
+            }
 
-            ASSERT(CloseHandle(Table->FileHandle));
+            if (!CloseHandle(Table->FileHandle)) {
+                SYS_ERROR(CloseHandle);
+                goto Error;
+            }
+
             Table->FileHandle = NULL;
 
             //
@@ -1599,10 +1654,16 @@ Return Value:
             // close file.
             //
 
-            ASSERT(UnmapViewOfFile(Table->InfoStreamBaseAddress));
+            if (!UnmapViewOfFile(Table->InfoStreamBaseAddress)) {
+                SYS_ERROR(UnmapViewOfFile);
+                goto Error;
+            }
             Table->InfoStreamBaseAddress = NULL;
 
-            ASSERT(CloseHandle(Table->InfoStreamMappingHandle));
+            if (!CloseHandle(Table->InfoStreamMappingHandle)) {
+                SYS_ERROR(CloseHandle);
+                goto Error;
+            }
             Table->InfoStreamMappingHandle = NULL;
 
             //
@@ -1617,11 +1678,21 @@ Return Value:
                                        NULL,
                                        FILE_BEGIN);
 
-            ASSERT(Success);
+            if (!Success) {
+                SYS_ERROR(SetFilePointerEx);
+                goto Error;
+            }
 
-            ASSERT(SetEndOfFile(Table->InfoStreamFileHandle));
+            if (!SetEndOfFile(Table->InfoStreamFileHandle)) {
+                SYS_ERROR(SetEndOfFile);
+                goto Error;
+            }
 
-            ASSERT(CloseHandle(Table->InfoStreamFileHandle));
+            if (!CloseHandle(Table->InfoStreamFileHandle)) {
+                SYS_ERROR(CloseHandle);
+                goto Error;
+            }
+
             Table->InfoStreamFileHandle = NULL;
 
             break;
@@ -1637,6 +1708,23 @@ Return Value:
             return;
 
     }
+
+    //
+    // We're done, jump to the end.
+    //
+
+    goto End;
+
+Error:
+
+    InterlockedIncrement((PLONG)&Context->FileWorkErrors);
+    Context->FileWorkLastError = GetLastError();
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
 
     //
     // Register the relevant event to be set when this threadpool callback
@@ -1676,6 +1764,7 @@ Return Value:
 
 --*/
 {
+    PRTL Rtl;
     ULONG Index;
     PBYTE Buffer;
     PBYTE ExpectedBuffer;
@@ -1691,6 +1780,7 @@ Return Value:
     Context = Info->Context;
     Table = Context->Table;
     Header = Table->Header;
+    Rtl = Context->Rtl;
 
     //
     // Obtain new seed data for the first two seeds and initialize the number
@@ -1834,7 +1924,9 @@ Return Value:
     if (Graph->Attempt == Context->ResizeTableThreshold &&
         Header->NumberOfTableResizeEvents < Context->ResizeLimit) {
 
-        ASSERT(SetEvent(Context->TryLargerTableSizeEvent));
+        if (!SetEvent(Context->TryLargerTableSizeEvent)) {
+            SYS_ERROR(SetEvent);
+        }
     }
 
     //

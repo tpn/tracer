@@ -4649,6 +4649,135 @@ End:
     return Success;
 }
 
+PRINT_SYS_ERROR RtlPrintSysError;
+
+_Use_decl_annotations_
+BOOLEAN
+RtlPrintSysError(
+    PRTL Rtl,
+    PCSZ FunctionName,
+    PCSZ FileName,
+    ULONG LineNumber
+    )
+{
+    BOOL Success;
+    LONG Result1;
+    ULONG Result2;
+    ULONG Flags;
+    PCHAR Buffer;
+    PCHAR BaseBuffer;
+    PCHAR EndBuffer;
+    ULONG LastError;
+    ULONG LanguageId;
+    ULONG BytesWritten;
+    ULONG_PTR BytesToWrite;
+    LONG_PTR SizeOfBufferInChars;
+
+    LastError = GetLastError();
+
+    AcquireRtlErrorMessageBufferLock(Rtl);
+
+    Buffer = BaseBuffer = Rtl->ErrorMessageBuffer;
+    EndBuffer = Buffer + Rtl->SizeOfErrorMessageBufferInBytes;
+
+    //
+    // The following is unnecessary when dealing with bytes, but will allow
+    // easy conversion into a WCHAR version at a later date.
+    //
+
+    SizeOfBufferInChars = (LONG_PTR)(
+        (LONG_PTR)Rtl->SizeOfErrorMessageBufferInBytes *
+        (LONG_PTR)sizeof(*Buffer)
+    );
+
+    Result1 = Rtl->sprintf_s(Buffer,
+                             (ULONG)SizeOfBufferInChars,
+                             "%s: %lu: %s failed with error: %lu.  ",
+                             FileName,
+                             LineNumber,
+                             FunctionName,
+                             LastError);
+
+    if (Result1 <= 0) {
+        OutputDebugStringA("RtlPrintSysError: Rtl->sprintf_s() failed.\n");
+        goto Error;
+    }
+
+    Buffer += Result1;
+    SizeOfBufferInChars -= Result1;
+
+    Flags = (FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS);
+
+    LanguageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+
+    Result2 = FormatMessageA(Flags,
+                             NULL,
+                             LastError,
+                             LanguageId,
+                             (PSTR)Buffer,
+                             (ULONG)SizeOfBufferInChars,
+                             NULL);
+
+    if (!Result2) {
+        OutputDebugStringA("RtlPrintSysError: FormatMessageA() failed.\n");
+        goto Error;
+    }
+
+    Buffer += Result2;
+    SizeOfBufferInChars -= Result2;
+
+    //
+    // We want at least two characters left in the buffer for the \n and
+    // trailing NULL.
+    //
+
+    ASSERT(SizeOfBufferInChars >= 2);
+    ASSERT((ULONG_PTR)Buffer <= (ULONG_PTR)(EndBuffer - 2));
+
+    *Buffer += '\n';
+    *Buffer += '\0';
+
+    ASSERT((ULONG_PTR)Buffer <= (ULONG_PTR)EndBuffer);
+
+    BytesToWrite = RtlPointerToOffset(BaseBuffer, Buffer);
+    ASSERT(BytesToWrite <= Rtl->SizeOfErrorMessageBufferInBytes);
+
+    Success = WriteFile(Rtl->ErrorOutputHandle,
+                        BaseBuffer,
+                        (ULONG)BytesToWrite,
+                        &BytesWritten,
+                        NULL);
+
+    if (!Success) {
+        OutputDebugStringA("RtlPrintSysError: WriteFile() failed.\n");
+        goto Error;
+    }
+
+    //
+    // We're done, finish up and return.
+    //
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    Success = FALSE;
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    SecureZeroMemory(Rtl->ErrorMessageBuffer,
+                     Rtl->SizeOfErrorMessageBufferInBytes);
+
+    ReleaseRtlErrorMessageBufferLock(Rtl);
+
+    return Success;
+}
+
 INITIALIZE_CRT InitializeCrt;
 
 BOOL
@@ -4662,11 +4791,6 @@ InitializeCrt(
 
     Rtl->CrtModule = LoadLibraryA("msvcrt.dll");
     if (!Rtl->CrtModule) {
-        return FALSE;
-    }
-
-    Rtl->vsprintf_s = (PVSPRINTF_S)GetProcAddress(Rtl->CrtModule, "vsprintf_s");
-    if (!Rtl->vsprintf_s) {
         return FALSE;
     }
 
@@ -4850,6 +4974,35 @@ InitializeRtl(
     );
     Rtl->TestCreateAndDestroyBuffer = TestCreateAndDestroyBuffer;
 #endif
+
+    //
+    // Error handling.
+    //
+
+    Rtl->ErrorOutputHandle = GetStdHandle(STD_ERROR_HANDLE);
+    Rtl->PrintSysError = RtlPrintSysError;
+
+    //
+    // Create an error message buffer.
+    //
+
+    InitializeSRWLock(&Rtl->ErrorMessageBufferLock);
+
+    AcquireRtlErrorMessageBufferLock(Rtl);
+
+    Rtl->SizeOfErrorMessageBufferInBytes = PAGE_SIZE;
+
+    Rtl->ErrorMessageBuffer = (PCHAR)(
+        HeapAlloc(HeapHandle,
+                  HEAP_ZERO_MEMORY,
+                  Rtl->SizeOfErrorMessageBufferInBytes)
+    );
+
+    if (!Rtl->ErrorMessageBuffer) {
+        Success = FALSE;
+    }
+
+    ReleaseRtlErrorMessageBufferLock(Rtl);
 
     return Success;
 }

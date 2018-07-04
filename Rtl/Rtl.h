@@ -2025,7 +2025,30 @@ VOID
 typedef QSORT *PQSORT;
 
 typedef
-ULONG
+_Success_(return >= 0)
+_Check_return_opt_
+LONG
+(__cdecl SPRINTF_S)(
+    _Out_writes_(_BufferCount) _Always_(_Post_z_) char* const _Buffer,
+    _In_ size_t const _BufferCount,
+    _In_z_ _Printf_format_string_ char const* const _Format,
+    ...);
+typedef SPRINTF_S *PSPRINTF_S;
+
+typedef
+_Success_(return >= 0)
+_Check_return_opt_
+LONG
+(__cdecl SWPRINTF_S)(
+    _Out_writes_(_BufferCount) _Always_(_Post_z_) wchar_t* const _Buffer,
+    _In_ size_t const _BufferCount,
+    _In_z_ _Printf_format_string_ char const* const _Format,
+    ...);
+typedef SWPRINTF_S *PSWPRINTF_S;
+
+typedef
+_Success_(return >= 0)
+LONG
 (__cdecl VSPRINTF_S)(
     _Out_writes_(cchDest) _Always_(_Post_z_) STRSAFE_LPSTR pszDest,
     _In_ size_t cchDest,
@@ -2033,6 +2056,17 @@ ULONG
     _In_ va_list argList
     );
 typedef VSPRINTF_S *PVSPRINTF_S;
+
+typedef
+_Success_(return >= 0)
+LONG
+(__cdecl VSWPRINTF_S)(
+    _Out_writes_(_BufferCount) _Always_(_Post_z_) wchar_t* const _Buffer,
+    _In_ size_t const _BufferCount,
+    _In_z_ _Printf_format_string_ wchar_t const* const _Format,
+    va_list _ArgList
+    );
+typedef VSWPRINTF_S *PVSWPRINTF_S;
 
 typedef
 BOOL
@@ -4690,6 +4724,10 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PBSEARCH bsearch;                                                                                  \
     PQSORT qsort;                                                                                      \
     PMEMSET memset;                                                                                    \
+    PSPRINTF_S sprintf_s;                                                                              \
+    PSWPRINTF_S swprintf_s;                                                                            \
+    PVSPRINTF_S vsprintf_s;                                                                            \
+    PVSWPRINTF_S vswprintf_s;                                                                          \
     PSET_CONSOLE_CTRL_HANDLER SetConsoleCtrlHandler;                                                   \
     PMM_GET_MAXIMUM_FILE_SECTION_SIZE MmGetMaximumFileSectionSize;                                     \
     PGET_PROCESS_MEMORY_INFO K32GetProcessMemoryInfo;                                                  \
@@ -6429,6 +6467,19 @@ BOOL
     );
 typedef GET_CU *PGET_CU;
 
+typedef
+_Success_(return != 0)
+_Check_return_opt_
+BOOLEAN
+(NTAPI PRINT_SYS_ERROR)(
+    _In_ PRTL Rtl,
+    _In_ PCSZ FunctionName,
+    _In_ PCSZ FileName,
+    _In_opt_ ULONG LineNumber
+    );
+typedef PRINT_SYS_ERROR *PPRINT_SYS_ERROR;
+#define SYS_ERROR(Name) Rtl->PrintSysError(Rtl, #Name, __FILE__, __LINE__)
+
 typedef union _RTL_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
@@ -6552,8 +6603,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PCREATE_EVENT_A CreateEventA;
     PCREATE_EVENT_W CreateEventW;
 
-    PVSPRINTF_S vsprintf_s;
-
     //
     // Fully-qualified module path name set by SetDllPath().
     //
@@ -6589,6 +6638,16 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     PINITIALIZE_ALLOCATOR InitializeHeapAllocator;
     PDESTROY_ALLOCATOR DestroyHeapAllocator;
+
+    HANDLE ErrorOutputHandle;
+    PPRINT_SYS_ERROR PrintSysError;
+    SRWLOCK ErrorMessageBufferLock;
+
+    _Guarded_by_(ErrorMessageBufferLock)
+    struct {
+        PCHAR ErrorMessageBuffer;
+        SIZE_T SizeOfErrorMessageBufferInBytes;
+    };
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
@@ -6639,6 +6698,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 #endif
 
 } RTL, *PRTL, **PPRTL;
+
+#define AcquireRtlErrorMessageBufferLock(Rtl) \
+    AcquireSRWLockExclusive(&Rtl->ErrorMessageBufferLock)
+
+#define ReleaseRtlErrorMessageBufferLock(Rtl) \
+    ReleaseSRWLockExclusive(&Rtl->ErrorMessageBufferLock)
 
 FORCEINLINE
 ULONG
