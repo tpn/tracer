@@ -31,6 +31,7 @@ Abstract:
 #endif
 
 //
+//
 // Cap the maximum key set size we're willing to process.
 //
 
@@ -691,6 +692,27 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     struct _PERFECT_HASH_TABLE_VTBL_EX *Vtbl;
 
     //
+    // Base address of the memory map for the backing file.
+    //
+
+    union {
+        PVOID BaseAddress;
+        PULONG Data;
+    };
+
+    //
+    // If a table is loaded successfully, an array will be allocated for storing
+    // values (as part of the Insert()/Lookup() API), the base address for which
+    // is captured by the next field.
+    //
+
+    union {
+        PVOID ValuesBaseAddress;
+        PULONG Values;
+    };
+
+
+    //
     // Size of the structure, in bytes.
     //
 
@@ -827,15 +849,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     HANDLE MappingHandle;
 
     //
-    // Base address of the memory map for the backing file.
-    //
-
-    union {
-        PVOID BaseAddress;
-        PULONG Data;
-    };
-
-    //
     // Fully-qualified, NULL-terminated path of the backing file.  The path is
     // automatically derived from the keys file.
     //
@@ -883,17 +896,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
 
     ULARGE_INTEGER InfoMappingSizeInBytes;
     ULARGE_INTEGER InfoActualStructureSizeInBytes;
-
-    //
-    // If a table is loaded successfully, an array will be allocated for storing
-    // values (as part of the Insert()/Lookup() API), the base address for which
-    // is captured by the next field.
-    //
-
-    union {
-        PVOID ValuesBaseAddress;
-        PULONG Values;
-    };
 
     //
     // During creation, a large bitmap is created to cover the entire range of

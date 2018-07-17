@@ -792,7 +792,7 @@ typedef
 _Check_return_
 CU_RESULT
 (CU_DEVICE_GET)(
-    _Outptr_result_maybenull_ PCU_DEVICE Device,
+    _Out_ PCU_DEVICE Device,
     _In_opt_ LONG Ordinal
     );
 typedef CU_DEVICE_GET *PCU_DEVICE_GET;
@@ -838,7 +838,7 @@ typedef
 _Check_return_
 CU_RESULT
 (CU_DEVICE_GET_ATTRIBUTE)(
-    _Outptr_result_maybenull_ PLONG AttributeValuePointer,
+    _Out_ PLONG AttributeValuePointer,
     _In_ CU_DEVICE_ATTRIBUTE Attribute,
     _In_ CU_DEVICE Device
     );
@@ -971,7 +971,7 @@ _Check_return_
 CU_RESULT
 (CU_MODULE_GET_GLOBAL)(
     _Outptr_result_maybenull_ PPCU_DEVICE_POINTER DevicePtrPointer,
-    _Outptr_result_maybenull_ PSIZE_T SizeInBytes,
+    _Out_ PSIZE_T SizeInBytes,
     _In_ PCU_MODULE Module,
     _In_ PCSZ Name
     );
@@ -1124,7 +1124,7 @@ typedef
 _Check_return_
 CU_RESULT
 (CU_EVENT_ELAPSED_TIME)(
-    _Outptr_ PFLOAT Milliseconds,
+    _Out_ PFLOAT Milliseconds,
     _In_ PCU_EVENT StartEvent,
     _In_ PCU_EVENT EndEvent
     );

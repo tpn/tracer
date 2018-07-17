@@ -173,7 +173,7 @@ CopyPagesMovsq_C(
     ULONG NumberOfPages
     )
 {
-    ULONG_PTR BytesToCopy = NumberOfPages << PAGE_SHIFT;
+    ULONG_PTR BytesToCopy = (ULONG_PTR)NumberOfPages << (ULONG_PTR)PAGE_SHIFT;
     ULONG_PTR QuadWordsToCopy = BytesToCopy >> 3;
 
     __movsq((PDWORD64)Dest,

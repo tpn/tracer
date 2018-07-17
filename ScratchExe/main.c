@@ -225,6 +225,12 @@ AlignmentScratch(
     }
 }
 
+#if 1
+#include <sddl.h>
+#include <AclAPI.h>
+#include <winerror.h>
+#endif
+
 DECLSPEC_NORETURN
 VOID
 WINAPI
@@ -233,6 +239,148 @@ mainCRTStartup()
     LONG ExitCode = 0;
 
 #if 1
+    PACL Acl;
+    BOOL Success;
+    BOOL Completed;
+    PVOID Buffer = NULL;
+    ULONG Result;
+    ULONG LastError;
+    ULONG BufferSize = 0;
+    ULONG MaxInstances = 12;
+    ULONG OutputBufferSize = 4096;
+    ULONG InputBufferSize = 4096;
+    ULONG DefaultTimeout = 0;
+    ULONG OpenMode;
+    ULONG PipeMode;
+    ULONG WaitResult;
+    OVERLAPPED Overlapped;
+    HANDLE TokenHandle = NULL;
+    HANDLE PipeHandle;
+    PTOKEN_USER Token;
+    LPWSTR SidString;
+    SECURITY_ATTRIBUTES SecurityAttributes;
+    SECURITY_DESCRIPTOR SecurityDescriptor;
+    PSECURITY_ATTRIBUTES Attributes;
+    EXPLICIT_ACCESS_W ExplicitAccess;
+    const UNICODE_STRING PipeName =
+        RTL_CONSTANT_STRING(L"\\\\.\\pipe\\HordeThump");
+
+    Success = OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &TokenHandle);
+    ASSERT(Success);
+
+    Success = GetTokenInformation(TokenHandle,
+                                  TokenUser,
+                                  NULL,
+                                  0,
+                                  &BufferSize);
+
+
+    LastError = GetLastError();
+
+    ASSERT(!Success && LastError == ERROR_INSUFFICIENT_BUFFER);
+
+    Buffer = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, BufferSize);
+    ASSERT(Buffer);
+
+    Token = (PTOKEN_USER)Buffer;
+
+    Success = GetTokenInformation(TokenHandle,
+                                  TokenUser,
+                                  Token,
+                                  BufferSize,
+                                  &BufferSize);
+
+    ASSERT(Success);
+
+    Success = IsValidSid(Token->User.Sid);
+    ASSERT(Success);
+
+    Success = ConvertSidToStringSidW(Token->User.Sid, &SidString);
+    ASSERT(Success);
+
+    ZeroStruct(ExplicitAccess);
+
+    ExplicitAccess.grfAccessPermissions = (
+        GENERIC_READ    |
+        GENERIC_WRITE   |
+        SYNCHRONIZE
+    );
+    ExplicitAccess.grfAccessMode = SET_ACCESS;
+    ExplicitAccess.grfInheritance = NO_INHERITANCE;
+    ExplicitAccess.Trustee.TrusteeForm = TRUSTEE_IS_SID;
+    ExplicitAccess.Trustee.TrusteeType = TRUSTEE_IS_USER;
+    //ExplicitAccess.Trustee.ptstrName = (PWSTR)&Token->User.Sid;
+    ExplicitAccess.Trustee.ptstrName = (PWSTR)Token->User.Sid;
+
+    Result = SetEntriesInAclW(1, &ExplicitAccess, NULL, &Acl);
+    ASSERT(!FAILED(Result));
+
+    ZeroStruct(SecurityAttributes);
+    SecurityAttributes.nLength = sizeof(SecurityAttributes);
+    SecurityAttributes.lpSecurityDescriptor = NULL;
+    SecurityAttributes.bInheritHandle = FALSE;
+
+    Success = InitializeSecurityDescriptor(&SecurityDescriptor,
+                                           SECURITY_DESCRIPTOR_REVISION);
+    ASSERT(Success);
+
+    Success = SetSecurityDescriptorDacl(&SecurityDescriptor,
+                                        TRUE,
+                                        Acl,
+                                        FALSE);
+
+    ASSERT(Success);
+
+    SecurityAttributes.lpSecurityDescriptor = &SecurityDescriptor;
+    Attributes = &SecurityAttributes;
+
+    OpenMode = (
+        PIPE_ACCESS_DUPLEX            |
+        FILE_FLAG_FIRST_PIPE_INSTANCE |
+        FILE_FLAG_OVERLAPPED
+    );
+
+    PipeMode = (
+        PIPE_TYPE_MESSAGE           |
+        PIPE_READMODE_MESSAGE       |
+        PIPE_WAIT                   |
+        PIPE_REJECT_REMOTE_CLIENTS
+    );
+
+    PipeHandle = CreateNamedPipeW(PipeName.Buffer,
+                                  OpenMode,
+                                  PipeMode,
+                                  MaxInstances,
+                                  OutputBufferSize,
+                                  InputBufferSize,
+                                  DefaultTimeout,
+                                  Attributes);
+
+    LastError = GetLastError();
+
+    ASSERT(PipeHandle != NULL && PipeHandle != INVALID_HANDLE_VALUE);
+
+    ZeroStruct(Overlapped);
+
+    Overlapped.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+    ASSERT(Overlapped.hEvent);
+
+    Success = ConnectNamedPipe(PipeHandle, &Overlapped);
+
+    LastError = GetLastError();
+
+    ASSERT(!Success && LastError == ERROR_IO_PENDING);
+
+    WaitResult = WaitForSingleObject(Overlapped.hEvent, 2000);
+
+    Completed = HasOverlappedIoCompleted(&Overlapped);
+
+    ASSERT(!Completed);
+
+
+#endif
+
+#if 0
     ULONGLONG Value;
 
     Value = RoundUpPowerOf2(0);

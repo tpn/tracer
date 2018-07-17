@@ -258,6 +258,8 @@ FindAndReplaceByte(
     return Total;
 }
 
+MAKE_RANDOM_STRING MakeRandomString;
+
 _Use_decl_annotations_
 BOOL
 MakeRandomString(
@@ -305,6 +307,9 @@ End:
 
     return Success;
 }
+
+
+CREATE_BUFFER CreateBuffer;
 
 _Use_decl_annotations_
 BOOL
@@ -452,6 +457,8 @@ End:
     return Success;
 
 }
+
+CREATE_MULTIPLE_BUFFERS CreateMultipleBuffers;
 
 _Use_decl_annotations_
 BOOL
@@ -730,6 +737,8 @@ End:
     return Success;
 }
 
+DESTROY_BUFFER DestroyBuffer;
+
 _Use_decl_annotations_
 BOOL
 DestroyBuffer(
@@ -769,6 +778,7 @@ DestroyBuffer(
     return TRUE;
 }
 
+TEST_CREATE_AND_DESTROY_BUFFER TestCreateAndDestroyBuffer;
 
 _Use_decl_annotations_
 BOOL
@@ -824,13 +834,14 @@ TestCreateAndDestroyBuffer(
     return TRUE;
 }
 
+FILL_BUFFER_WITH_256_BYTES FillBufferWith256Bytes;
+
 _Use_decl_annotations_
 VOID
 FillBufferWith256Bytes(
     PBYTE Dest,
     PCBYTE Source,
-    ULONGLONG SizeOfDest,
-    ULONGLONG SizeOfSource
+    ULONGLONG SizeOfDest
     )
 {
     ULONGLONG Index;
@@ -1050,7 +1061,6 @@ InitializeInjection(PRTL Rtl)
     return TRUE;
 }
 
-_Use_decl_annotations_
 BOOL
 ResolveNvcudaFunctions(
     PRTL Rtl,
@@ -1259,6 +1269,7 @@ GetSystemTimerFunction(
 }
 
 _Check_return_
+_Success_(return != 0)
 BOOL
 CallSystemTimer(
     _Out_       PFILETIME   SystemTime,
@@ -1299,6 +1310,7 @@ CallSystemTimer(
 }
 
 
+_Success_(return != 0)
 BOOL
 FindCharsInUnicodeString(
     _In_     PRTL                Rtl,
@@ -1339,6 +1351,7 @@ FindCharsInUnicodeString(
     return TRUE;
 }
 
+_Success_(return != 0)
 BOOL
 FindCharsInString(
     _In_     PRTL         Rtl,
@@ -2042,6 +2055,7 @@ Start:
 
 
 _Check_return_
+_Success_(return != 0)
 BOOL
 FilesExistW(
     _In_      PRTL             Rtl,
@@ -2281,6 +2295,7 @@ Error:
 }
 
 _Check_return_
+_Success_(return != 0)
 BOOL
 FilesExistExW(
     _In_      PRTL             Rtl,
@@ -2294,7 +2309,7 @@ FilesExistExW(
     )
 {
     USHORT Index;
-    PWCHAR HeapBuffer;
+    PWCHAR HeapBuffer = NULL;
     ULONG CombinedSizeInBytes;
     USHORT DirectoryLength;
     USHORT MaxFilenameLength = 0;
@@ -2534,7 +2549,7 @@ FilesExistA(
     )
 {
     USHORT Index;
-    PCHAR HeapBuffer;
+    PCHAR HeapBuffer = NULL;
     ULONG CombinedSizeInBytes;
     USHORT DirectoryLength;
     USHORT MaxFilenameLength = 0;
@@ -2789,6 +2804,7 @@ CreateUnicodeString(
 }
 
 _Check_return_
+_Success_(return != 0)
 BOOL
 LoadRtlSymbols(_Inout_ PRTL Rtl)
 {
@@ -2960,6 +2976,7 @@ ResolveRtlExFunctions(
 }
 
 _Check_return_
+_Success_(return != 0)
 BOOL
 ResolveDbgHelpFunctions(
     _In_ PRTL Rtl,

@@ -803,12 +803,14 @@ typedef QUERY_WORKING_SET_EX *PQUERY_WORKING_SET_EX;
 // Console Handler routines.
 //
 
+#if 0
 typedef
 BOOL
 (WINAPI HANDLER_ROUTINE)(
     _In_ ULONG ControlType
     );
 typedef HANDLER_ROUTINE *PHANDLER_ROUTINE;
+#endif
 
 typedef
 BOOL
@@ -1271,8 +1273,8 @@ BOOL
     _In_opt_ PVOID SourceHandlerFunction,
     _In_reads_bytes_(SizeOfThunkBufferInBytes) PBYTE ThunkBuffer,
     _In_ USHORT SizeOfThunkBufferInBytes,
-    _In_reads_bytes_(SizeOfUserDataInBytes) PBYTE UserData,
-    _In_ USHORT SizeOfUserDataInBytes,
+    _In_reads_bytes_opt_(SizeOfUserDataInBytes) PBYTE UserData,
+    _In_opt_ USHORT SizeOfUserDataInBytes,
     _In_ PADJUST_THUNK_POINTERS AdjustThunkPointers,
     _In_ PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
     _Out_ PPVOID DestBaseCodeAddressPointer,
@@ -8495,6 +8497,7 @@ Return Value:
     }
 
     if (!ARGUMENT_PRESENT(TimestampPointer)) {
+        LocalTimestamp.QuadPart = 0;
         TimestampPointer = &LocalTimestamp;
     }
 
@@ -10220,6 +10223,7 @@ CompareStringCaseInsensitive(
 
 RTL_API
 _Check_return_
+_Success_(return != 0)
 BOOL
 FindCharsInUnicodeString(
     _In_     PRTL                Rtl,
@@ -10231,6 +10235,7 @@ FindCharsInUnicodeString(
 
 RTL_API
 _Check_return_
+_Success_(return != 0)
 BOOL
 CreateBitmapIndexForUnicodeString(
     _In_     PRTL                Rtl,
@@ -10244,6 +10249,7 @@ CreateBitmapIndexForUnicodeString(
 
 RTL_API
 _Check_return_
+_Success_(return != 0)
 BOOL
 FindCharsInString(
     _In_     PRTL           Rtl,
@@ -10255,6 +10261,7 @@ FindCharsInString(
 
 RTL_API
 _Check_return_
+_Success_(return != 0)
 BOOL
 CreateBitmapIndexForString(
     _In_     PRTL           Rtl,
@@ -10271,6 +10278,8 @@ VOID
 Debugbreak();
 
 RTL_API
+_Check_return_
+_Success_(return != 0)
 BOOL
 CreateUnicodeString(
     _In_  PRTL                  Rtl,
@@ -10282,6 +10291,7 @@ CreateUnicodeString(
 
 RTL_API
 _Check_return_
+_Success_(return != 0)
 BOOL
 FilesExistW(
     _In_      PRTL             Rtl,
@@ -10295,6 +10305,7 @@ FilesExistW(
 
 RTL_API
 _Check_return_
+_Success_(return != 0)
 BOOL
 FilesExistA(
     _In_      PRTL     Rtl,

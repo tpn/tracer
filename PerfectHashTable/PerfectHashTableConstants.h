@@ -8,7 +8,7 @@ Module Name:
 
 Abstract:
 
-    This module defines constants related to the PerfectHashTable component.
+    This module declares constants related to the PerfectHashTable component.
 
 --*/
 
@@ -266,6 +266,18 @@ const UNICODE_STRING Yes;
 const UNICODE_STRING KeysSuffix;
 const UNICODE_STRING TableSuffix;
 const UNICODE_STRING KeysWildcardSuffix;
+
+//
+// Declare placeholders for values we patch in the FastIndexEx() instruction
+// streams.
+//
+
+const ULONG Seed1Placeholder;
+const ULONG Seed2Placeholder;
+const ULONG Seed3Placeholder;
+const ULONG Seed4Placeholder;
+const ULONG HashMaskPlaceholder;
+const ULONG IndexMaskPlaceholder;
 
 #ifdef __cplusplus
 }; // extern "C" {

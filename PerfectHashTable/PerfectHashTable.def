@@ -16,3 +16,15 @@ EXPORTS
     SelfTestPerfectHashTable
     PerfectHashTableBenchmarkSingleMain
     PerfectHashTableBenchmarkAllMain
+    PerfectHashTableFastIndexImplChm01JenkinsHashModMask
+    FastIndexEx_x64_01
+    PatchInstructionSeed1Begin
+    PatchInstructionSeed1End
+    PatchInstructionSeed2Begin
+    PatchInstructionSeed2End
+    PatchInstructionSeed3Begin
+    PatchInstructionSeed3End
+    PatchInstructionHashMaskBegin
+    PatchInstructionHashMaskEnd
+    PatchInstructionIndexMaskBegin
+    PatchInstructionIndexMaskEnd

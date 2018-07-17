@@ -120,6 +120,9 @@
     </ClCompile>
     <ClCompile Include="TestPerfectHashTable.c" />
   </ItemGroup>
+  <ItemGroup>
+    <MASM Include="PerfectHashTableFastIndexEx_x64_01.asm" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />

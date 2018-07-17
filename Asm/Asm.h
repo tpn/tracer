@@ -68,8 +68,8 @@ typedef struct _PAGE_COPY_TYPE {
 typedef
 VOID
 (COPY_PAGES)(
-    _Out_writes_bytes_all_(NumberOfPages << PAGE_SHIFT) PCHAR Dest,
-    _In_reads_bytes_(NumberOfPages << PAGE_SHIFT) _Const_ PCHAR Source,
+    _Out_writes_bytes_all_(NumberOfPages * 4096) PCHAR Dest,
+    _In_reads_bytes_(NumberOfPages * 4096) _Const_ PCHAR Source,
     _In_ ULONG NumberOfPages
     );
 typedef COPY_PAGES *PCOPY_PAGES;
@@ -77,8 +77,8 @@ typedef COPY_PAGES *PCOPY_PAGES;
 typedef
 VOID
 (COPY_PAGES_EX)(
-    _Out_writes_bytes_all_(NumberOfPages << PAGE_SHIFT) PCHAR Dest,
-    _In_reads_bytes_(NumberOfPages << PAGE_SHIFT) _Const_ PCHAR Source,
+    _Out_writes_bytes_all_(NumberOfPages * 4096) PCHAR Dest,
+    _In_reads_bytes_(NumberOfPages * 4096) _Const_ PCHAR Source,
     _In_ ULONG NumberOfPages,
     _Out_opt_ PPAGE_COPY_TYPE PageCopyType
     );
@@ -104,7 +104,7 @@ ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v4;
 typedef
 VOID
 (FILL_PAGES)(
-    _Out_writes_bytes_all_(NumberOfPages << PAGE_SHIFT) PCHAR Dest,
+    _Out_writes_bytes_all_(NumberOfPages * 4096) PCHAR Dest,
     _In_opt_ BYTE Byte,
     _In_ ULONG NumberOfPages
     );

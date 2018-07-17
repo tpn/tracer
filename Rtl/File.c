@@ -218,10 +218,14 @@ Return Value:
 
     if (!FileHandle || FileHandle == INVALID_HANDLE_VALUE) {
         LastError = GetLastError();
-        if (LastError == ERROR_FILE_NOT_FOUND || ERROR_PATH_NOT_FOUND) {
+
+        if (LastError == ERROR_FILE_NOT_FOUND ||
+            LastError == ERROR_PATH_NOT_FOUND) {
+
             Success = TRUE;
             goto End;
         }
+
         goto Error;
     }
 
@@ -634,7 +638,12 @@ Return Value:
         SizeOfBitMap = File->EndOfFile.LowPart;
         BitmapPointer = &SourceCode->CarriageReturnBitmap;
         for (Index = 0; Index < NumberOfBitmaps; Index++) {
-            Bitmap = (PRTL_BITMAP)(BitmapBuffers + (Index * BitmapBytes));
+            Bitmap = (PRTL_BITMAP)(
+                BitmapBuffers + (
+                    (ULONG_PTR)Index *
+                    (ULONG_PTR)BitmapBytes
+                )
+            );
             Bitmap->SizeOfBitMap = SizeOfBitMap;
             Bitmap->Buffer = (PULONG)(
                 RtlOffsetToPointer(

@@ -307,4 +307,15 @@ const UNICODE_STRING KeysSuffix = RTL_CONSTANT_STRING(L"keys");
 const UNICODE_STRING TableSuffix = RTL_CONSTANT_STRING(L"pht1");
 const UNICODE_STRING KeysWildcardSuffix = RTL_CONSTANT_STRING(L"*.keys");
 
+//
+// Placeholders for values we patch in the FastIndexEx() instruction streams.
+//
+
+const ULONG Seed1Placeholder = 0x11111111;
+const ULONG Seed2Placeholder = 0x22222222;
+const ULONG Seed3Placeholder = 0x33333333;
+const ULONG Seed4Placeholder = 0x44444444;
+const ULONG HashMaskPlaceholder = 0xaaaaaaaa;
+const ULONG IndexMaskPlaceholder = 0xbbbbbbbb;
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab nowrap                              :

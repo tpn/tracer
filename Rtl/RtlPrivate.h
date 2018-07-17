@@ -510,6 +510,7 @@ C_ASSERT(sizeof(RTL_LDR_NOTIFICATION_ENTRY) == 64);
 typedef
 _Check_return_
 _Success_(return != 0)
+_No_competing_thread_
 BOOL
 (INITIALIZE_RTL_LDR_NOTIFICATION_TABLE)(
     _In_ PRTL Rtl,
@@ -520,6 +521,7 @@ typedef INITIALIZE_RTL_LDR_NOTIFICATION_TABLE \
 INITIALIZE_RTL_LDR_NOTIFICATION_TABLE InitializeRtlLdrNotificationTable;
 
 typedef
+_No_competing_thread_
 VOID
 (DESTROY_RTL_LDR_NOTIFICATION_TABLE)(
     _In_ PRTL_LDR_NOTIFICATION_TABLE NotificationTable
@@ -546,7 +548,7 @@ typedef CREATE_RTL_LDR_NOTIFICATION_ENTRY \
 CREATE_RTL_LDR_NOTIFICATION_ENTRY CreateRtlLdrNotificationEntry;
 
 typedef
-_Requires_lock_held_(NotificationTable->CriticalSection)
+_Requires_lock_held_(NotificationEntry->NotificationTable->CriticalSection)
 BOOL
 (REMOVE_RTL_LDR_NOTIFICATION_ENTRY)(
     _In_ PRTL_LDR_NOTIFICATION_ENTRY NotificationEntry

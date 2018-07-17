@@ -73,8 +73,6 @@ Return Value:
     HANDLE HeapHandle = NULL;
     PVOID Buffer = NULL;
 
-    UNREFERENCED_PARAMETER(String);
-
     //
     // Reserve a 32 byte (256 >> 3), 256 bit stack-allocated bitmap buffer.
     //
@@ -82,7 +80,6 @@ Return Value:
     CHAR StackBitmapBuffer[256 >> 3];
     RTL_BITMAP Bitmap = { 256, (PULONG)&StackBitmapBuffer };
     BitmapPointer = &Bitmap;
-
 
     //
     // Validate arguments.
@@ -375,7 +372,7 @@ Return Value:
 
     AlignedNumberOfCharacters = (
         ALIGN_UP_USHORT_TO_POINTER_SIZE(
-            NumberOfChars.LowPart + 1
+            NumberOfChars.LowPart + 1ULL
         )
     );
 

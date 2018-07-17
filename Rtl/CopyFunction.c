@@ -122,6 +122,9 @@ CopyFunction(
     *DestRuntimeFunctionPointer = NULL;
     *EntryCountPointer = 0;
 
+    DestUserData = NULL;
+    DestThunkBuffer = NULL;
+
     //
     // Allocate three local pages; one for code, one for readonly data, and one
     // for read/write data.
@@ -253,9 +256,11 @@ CopyFunction(
         if (NumberOfUnwindCodes % 2 != 0) {
             NumberOfUnwindCodes += 1;
         }
-        UnwindCodeSize = NumberOfUnwindCodes * sizeof(UNWIND_CODE);
+    } else {
+        NumberOfUnwindCodes = 0;
     }
 
+    UnwindCodeSize = NumberOfUnwindCodes * sizeof(UNWIND_CODE);
     TotalUnwindSize = UnwindInfoHeaderSize + UnwindCodeSize;
 
     SourceHandlerFieldOffset = UnwindInfoHeaderSize + UnwindCodeSize;
@@ -300,11 +305,11 @@ CopyFunction(
     DestRuntimeFunction = (PRUNTIME_FUNCTION)DestData;
     DestHandlerRuntimeFunction = DestRuntimeFunction + 1;
 
-    DestData = (PBYTE)ALIGN_UP(DestHandlerRuntimeFunction + 16, 16);
+    DestData = (PBYTE)ALIGN_UP(DestHandlerRuntimeFunction + 16ULL, 16);
 
     DestUnwindInfo = (PUNWIND_INFO)DestData;
     CopyMemory((PBYTE)DestUnwindInfo, (PBYTE)UnwindInfo, TotalUnwindSize);
-    DestData += ALIGN_UP(TotalUnwindSize + 16, 16);
+    DestData += ALIGN_UP(TotalUnwindSize + 16ULL, 16);
 
     DestRuntimeFunction->BeginAddress = (ULONG)(
         (ULONG_PTR)DestCode - (ULONG_PTR)LocalBaseCodeAddress
@@ -624,10 +629,6 @@ Cleanup:
             }
 
         } else {
-
-            *LocalBaseCodeAddressPointer = NULL;
-            *LocalThunkBufferAddressPointer = NULL;
-            *LocalUserDataAddressPointer = NULL;
 
             VirtualFreeEx(
                 ProcessHandle,

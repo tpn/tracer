@@ -320,6 +320,7 @@ Return Value:
     // Acquire the loader lock for the remaining duration of the call.
     //
 
+    Disposition = 0;
     Result = Rtl->LdrLockLoaderLock(0, &Disposition, &LoaderCookie);
     LoaderLockAcquired = (
         SUCCEEDED(Result) &&
@@ -413,14 +414,6 @@ Return Value:
     Success = TRUE;
 
     //
-    // Update the caller's cookie pointer if applicable.
-    //
-
-    if (ARGUMENT_PRESENT(Cookie)) {
-        *Cookie = (PVOID)Entry;
-    }
-
-    //
     // Intentional follow-on to End.
     //
 
@@ -435,6 +428,14 @@ End:
     }
 
     LeaveCriticalSection(&Table->CriticalSection);
+
+    //
+    // Update the caller's cookie pointer if applicable.
+    //
+
+    if (ARGUMENT_PRESENT(Cookie)) {
+        *Cookie = (Success ? Entry : NULL);
+    }
 
     return Success;
 }

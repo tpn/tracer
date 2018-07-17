@@ -593,7 +593,6 @@ RtlHeapAllocatorInitialize(
     return TRUE;
 }
 
-_Use_decl_annotations_
 BOOL
 RtlHeapAllocatorInitializeEx(
     PALLOCATOR Allocator,

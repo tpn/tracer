@@ -128,7 +128,7 @@ RetryWithLargerTableSize:
     //
 
     Rtl = Table->Rtl;
-    Keys = (PULONG)Table->Keys->BaseAddress;;
+    Keys = (PULONG)Table->Keys->BaseAddress;
     Allocator = Table->Allocator;
     Context = Table->Context;
     MaskFunctionId = Context->MaskFunctionId;

@@ -182,6 +182,11 @@ Return Value:
 
     } else {
 
+        if (!ARGUMENT_PRESENT(TargetFunctionName)) {
+            __debugbreak();
+            return FALSE;
+        }
+
         InitializeStringFromString(&Thunk.FunctionName, TargetFunctionName);
         InitializeUnicodeStringFromUnicodeString(&Thunk.ModulePath,
                                                  TargetModuleDllPath);
@@ -640,7 +645,6 @@ GetApproximateFunctionBoundaries(
 // End of inline function wrappers.
 //
 
-_Use_decl_annotations_
 DECLSPEC_NOINLINE
 ULONG_PTR
 GetInstructionPointer(
