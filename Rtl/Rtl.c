@@ -181,8 +181,8 @@ FindAndReplaceByte(
     PBYTE Dest;
     PBYTE TrailingBuffer;
 
-    TrailingBytes = SizeOfBufferInBytes % sizeof(YMMWORD);
     NumberOfYmmWords = SizeOfBufferInBytes >> 5;
+    TrailingBytes = SizeOfBufferInBytes - (NumberOfYmmWords << 5);
 
     FindYmm = _mm256_broadcastb_epi8(_mm_set1_epi8(Find));
     ReplaceYmm = _mm256_broadcastb_epi8(_mm_set1_epi8(Replace));
