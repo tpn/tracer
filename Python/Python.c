@@ -591,7 +591,7 @@ IsSupportedPythonVersion(_In_ PPYTHON Python)
         )) ||
         (Python->MajorVersion == 3 && (
             Python->MinorVersion >= 0 &&
-            Python->MinorVersion <= 5
+            Python->MinorVersion <= 7
         ))
     );
 }
@@ -690,6 +690,10 @@ ResolvePythonOffsets(_In_ PPYTHON Python)
                 case 5:
                     Python->PyCodeObjectOffsets = &PyCodeObjectOffsets33_35;
                     break;
+                case 6:
+                case 7:
+                    Python->PyCodeObjectOffsets = &PyCodeObjectOffsets36_37;
+                    break;
                 default:
                     return FALSE;
             };
@@ -716,7 +720,9 @@ ResolvePythonOffsets(_In_ PPYTHON Python)
                     break;
                 case 4:
                 case 5:
-                    Python->PyFrameObjectOffsets = &PyFrameObjectOffsets34_35;
+                case 6:
+                case 7:
+                    Python->PyFrameObjectOffsets = &PyFrameObjectOffsets34_37;
                     break;
                 default:
                     return FALSE;

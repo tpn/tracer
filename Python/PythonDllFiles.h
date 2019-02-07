@@ -63,6 +63,8 @@ DLL(Python33DllW, L"python33.dll");
 DLL(Python34DllW, L"python34.dll");
 DLL(Python35DllW, L"python35.dll");
 DLL(Python36DllW, L"python36.dll");
+DLL(Python37DllW, L"python37.dll");
+DLL(Python38DllW, L"python38.dll");
 
 //
 // We index directly into the DLL character array using this next value, so be
@@ -79,7 +81,9 @@ static CONST PUNICODE_STRING PythonDllFilesW[] = {
     (PUNICODE_STRING)&Python32DllW,
     (PUNICODE_STRING)&Python33DllW,
     (PUNICODE_STRING)&Python34DllW,
-    (PUNICODE_STRING)&Python35DllW
+    (PUNICODE_STRING)&Python35DllW,
+    (PUNICODE_STRING)&Python37DllW,
+    (PUNICODE_STRING)&Python38DllW,
 };
 
 #define NUMBER_OF_PYTHON_DLL_FILES ( \

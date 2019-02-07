@@ -55,6 +55,8 @@ enum PythonVersion {
     PythonVersion_34 = 0x0304,
     PythonVersion_35 = 0x0305,
     PythonVersion_36 = 0x0306,
+    PythonVersion_37 = 0x0307,
+    PythonVersion_38 = 0x0308,
 };
 
 typedef union _PYTHON_EVENT_TRAITS {
@@ -407,6 +409,86 @@ typedef struct _PYCODEOBJECT33_35 {
     };
 } PYCODEOBJECT33_35, *PPYCODEOBJECT33_35;
 
+typedef struct _PYCODEOBJECT36_37 {
+    _PYOBJECT_HEAD
+    union {
+        int co_argcount;
+        LONG ArgumentCount;
+    };
+    union {
+        int co_kwonlyargcount;
+        LONG KeywordOnlyArgumentCount;
+    };
+    union {
+        int co_nlocals;
+        LONG NumberOfLocals;
+    };
+    union {
+        int co_stacksize;
+        LONG StackSize;
+    };
+    union {
+        int co_flags;
+        LONG Flags;
+    };
+    union {
+        PyObject *co_code;
+        PPYOBJECT Code;
+    };
+    union {
+        PyObject *co_consts;
+        PPYOBJECT Constants;
+    };
+    union {
+        PyObject *co_names;
+        PPYOBJECT Names;
+    };
+    union {
+        PyObject *co_varnames;
+        PPYOBJECT LocalVariableNames;
+    };
+    union {
+        PyObject *co_freevars;
+        PPYOBJECT FreeVariableNames;
+    };
+    union {
+        PyObject *co_cellvars;
+        PPYOBJECT CellVariableNames;
+    };
+    union {
+        unsigned char *co_cell2arg;
+        PUCHAR CellVariableToArgument;
+    };
+    union {
+        PyObject *co_filename;
+        PPYOBJECT Filename;
+    };
+    union {
+        PyObject *co_name;
+        PPYOBJECT Name;
+    };
+    union {
+        int co_firstlineno;
+        LONG FirstLineNumber;
+    };
+    union {
+        PyObject *co_lnotab;
+        PPYOBJECT LineNumberTable;
+    };
+    union {
+        PyObject *co_zombieframe;
+        PPYOBJECT ZombieFrame;
+    };
+    union {
+        PyObject *co_weakreflist;
+        PPYOBJECT WeakrefList;
+    };
+    union {
+        void *co_extra;
+        PVOID Extra;
+    };
+} PYCODEOBJECT36_37, *PPYCODEOBJECT36_37;
+
 typedef struct _PYCODEOBJECTOFFSETS {
     union {
         const USHORT co_argcount;
@@ -472,6 +554,14 @@ typedef struct _PYCODEOBJECTOFFSETS {
         const USHORT co_zombieframe;
         const USHORT ZombieFrame;
     };
+    union {
+        const USHORT co_weakreflist;
+        const USHORT WeakrefList;
+    };
+    union {
+        const USHORT co_extra;
+        const USHORT Extra;
+    };
 } PYCODEOBJECTOFFSETS, *PPYCODEOBJECTOFFSETS;
 typedef const PYCODEOBJECTOFFSETS CPYCODEOBJECTOFFSETS, *PCPYCODEOBJECTOFFSETS;
 //typedef const PPYCODEOBJECTOFFSETS *PCPYCODEOBJECTOFFSETS;
@@ -484,6 +574,7 @@ typedef struct _PYFUNCTIONOBJECT {
         PPYCODEOBJECT25_27 Code25_27;
         PPYCODEOBJECT30_32 Code30_32;
         PPYCODEOBJECT33_35 Code33_35;
+        PPYCODEOBJECT36_37 Code36_37;
     };
     union {
         PyObject *func_globals;
@@ -592,7 +683,7 @@ typedef struct _PYFRAMEOBJECT25_33 {
     };
 } PYFRAMEOBJECT25_33, *PPYFRAMEOBJECT25_33;
 
-typedef struct _PYFRAMEOBJECT34_35 {
+typedef struct _PYFRAMEOBJECT34_37 {
     _PYFRAMEOBJECT_HEAD
     union {
         PyObject *f_gen;
@@ -622,7 +713,7 @@ typedef struct _PYFRAMEOBJECT34_35 {
         PyObject *f_localsplus[1];
         PPYOBJECT LocalsPlusStack[1];
     };
-} PYFRAMEOBJECT34_35, *PPYFRAMEOBJECT34_35;
+} PYFRAMEOBJECT34_37, *PPYFRAMEOBJECT34_37;
 
 //
 // We only capture the offsets for the struct members that are not consistent
@@ -661,7 +752,7 @@ typedef struct _PYFRAMEOBJECTOFFSETS {
     };
 
     //
-    // PYFRAMEOBJECT34_35
+    // PYFRAMEOBJECT34_37
     //
 
     union {
@@ -1526,9 +1617,10 @@ typedef struct _PYOBJECTEX {
         PPYCODEOBJECT25_27      Code25_27;
         PPYCODEOBJECT30_32      Code30_32;
         PPYCODEOBJECT33_35      Code33_35;
+        PPYCODEOBJECT36_37      Code36_37;
         PPYFRAMEOBJECT          Frame;
         PPYFRAMEOBJECT25_33     Frame25_33;
-        PPYFRAMEOBJECT34_35     Frame34_35;
+        PPYFRAMEOBJECT34_37     Frame34_37;
         PPYLONGOBJECT           Long;
         PPYINTOBJECT            Int;
         PPYTUPLEOBJECT          Tuple;
@@ -1957,9 +2049,10 @@ PYTHON_EX_DATA CONST STRING BUILTINS_A;
 PYTHON_EX_DATA CONST PYCODEOBJECTOFFSETS PyCodeObjectOffsets25_27;
 PYTHON_EX_DATA CONST PYCODEOBJECTOFFSETS PyCodeObjectOffsets30_32;
 PYTHON_EX_DATA CONST PYCODEOBJECTOFFSETS PyCodeObjectOffsets33_35;
+PYTHON_EX_DATA CONST PYCODEOBJECTOFFSETS PyCodeObjectOffsets36_37;
 
 PYTHON_EX_DATA CONST PYFRAMEOBJECTOFFSETS PyFrameObjectOffsets25_33;
-PYTHON_EX_DATA CONST PYFRAMEOBJECTOFFSETS PyFrameObjectOffsets34_35;
+PYTHON_EX_DATA CONST PYFRAMEOBJECTOFFSETS PyFrameObjectOffsets34_37;
 
 //
 // PythonAllocator-related functions.
