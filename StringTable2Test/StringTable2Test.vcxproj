@@ -22,7 +22,7 @@
     <ProjectGuid>{6B03819C-E931-4225-8F21-E9863D747751}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>StringTable2Test</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
     <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -190,7 +190,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringTable2\StringTableTestGlue.c">
-        <PrecompiledHeader/>
+      <PrecompiledHeader />
     </ClCompile>
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

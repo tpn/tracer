@@ -45,10 +45,9 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{1FCBA373-CA75-4D4B-9C25-17BF13328A06}</ProjectGuid>
     <RootNamespace>StringTable2BenchmarkExe</RootNamespace>
-    <TargetPlatformVersion>10.0.14393.0</TargetPlatformVersion>
     <PlatformToolset>v141</PlatformToolset>
-    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
     <ProjectName>StringTable2BenchmarkExe</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
@@ -84,7 +83,7 @@
   <ItemGroup>
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
     <ClCompile Include="..\StringTable2\StringTableTestGlue.c">
-      <PrecompiledHeader/>
+      <PrecompiledHeader />
     </ClCompile>
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>

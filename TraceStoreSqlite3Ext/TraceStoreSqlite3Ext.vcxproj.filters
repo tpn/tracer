@@ -21,9 +21,6 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TraceStoreSqlite3ExtLoader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="TraceStoreSqlite3Ext.h">
       <Filter>Header Files</Filter>
     </ClInclude>
