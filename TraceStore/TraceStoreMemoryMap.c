@@ -123,7 +123,7 @@ Return Value:
         NumberOfMaps *= Multiplier;
     }
 
-    if (!IsPowerOf2(NumberOfMaps)) {
+    if (!IsPowerOfTwo(NumberOfMaps)) {
         __debugbreak();
         return FALSE;
     }
@@ -460,6 +460,7 @@ Return Value:
 
 --*/
 {
+    PRTL Rtl;
     BOOL Success;
     BOOL IsFirstMap;
     BOOL IsMetadata;
@@ -494,6 +495,7 @@ Return Value:
     // Initialize aliases.
     //
 
+    Rtl = TraceStore->Rtl;
     IsMetadata = IsMetadataTraceStore(TraceStore);
     Stats = TraceStore->Stats;
 

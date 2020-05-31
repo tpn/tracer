@@ -17,6 +17,7 @@ Abstract:
 _Use_decl_annotations_
 STRING_TABLE_INDEX
 IsPrefixOfStringInSingleTable_C(
+    PRTL Rtl,
     PSTRING_TABLE StringTable,
     PSTRING String,
     PSTRING_MATCH Match
@@ -30,6 +31,8 @@ Routine Description:
     or is equal to" the search string.
 
 Arguments:
+
+    Rtl - Supplies a pointer to an RTL instance.
 
     StringTable - Supplies a pointer to a STRING_TABLE struct.
 
@@ -121,6 +124,7 @@ Return Value:
     //
 
     Index = SearchStringTableSlotsForFirstPrefixMatch(
+        Rtl,
         StringTable,
         String,
         Bitmap,

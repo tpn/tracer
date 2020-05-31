@@ -282,7 +282,7 @@ Return Value:
     Extra = Input;
     Extra &= InvertedHashMask;
 
-    Shift = TrailingZeros(InvertedHashMask);
+    Shift = Rtl->TrailingZeros32(InvertedHashMask);
     Extra >>= Shift;
 
     Mask ^= Extra;
@@ -290,7 +290,7 @@ Return Value:
     *Masked = Mask;
     return S_OK;
 
-    PopCount = PopulationCount32(Extra);
+    PopCount = Rtl->PopulationCount32(Extra);
 
     if (PopCount & 1) {
 

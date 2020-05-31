@@ -441,6 +441,7 @@ typedef CREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE  \
 typedef
 STRING_TABLE_INDEX
 (IS_PREFIX_OF_STRING_IN_TABLE)(
+    _In_ PRTL Rtl,
     _In_ struct _STRING_TABLE *StringTable,
     _In_ PSTRING String,
     _Out_opt_ struct _STRING_MATCH *StringMatch
@@ -967,6 +968,7 @@ ComputeCrc32ForString(
 FORCEINLINE
 USHORT
 IsPrefixMatchAvx2(
+    _In_ PRTL Rtl,
     _In_ PCSTRING SearchString,
     _In_ PCSTRING TargetString,
     _In_ USHORT Offset
@@ -1023,8 +1025,10 @@ StartYmm:
         // reverting to an unaligned load when not.
         //
 
-        SearchStringAlignment = GetAddressAlignment(SearchBuffer);
-        TargetStringAlignment = GetAddressAlignment(TargetBuffer);
+        SearchStringAlignment = GetAddressAlignment(Rtl,
+                                                    (ULONG_PTR)SearchBuffer);
+        TargetStringAlignment = GetAddressAlignment(Rtl,
+                                                    (ULONG_PTR)TargetBuffer);
 
         if (SearchStringAlignment < 32) {
             SearchYmm = _mm256_loadu_si256((PYMMWORD)SearchBuffer);
@@ -1102,7 +1106,8 @@ StartXmm:
         // reverting to an unaligned load when not.
         //
 
-        SearchStringAlignment = GetAddressAlignment(SearchBuffer);
+        SearchStringAlignment = GetAddressAlignment(Rtl,
+                                                    (ULONG_PTR)SearchBuffer);
 
         if (SearchStringAlignment < 16) {
             SearchXmm = _mm_loadu_si128((XMMWORD *)SearchBuffer);
@@ -1290,6 +1295,7 @@ _Success_(return != 0)
 FORCEINLINE
 BOOL
 AssertStringTableFieldAlignment(
+    _In_ PRTL Rtl,
     _In_ PSTRING_TABLE StringTable
     )
 {

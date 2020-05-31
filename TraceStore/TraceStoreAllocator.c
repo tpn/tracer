@@ -308,6 +308,7 @@ TraceStoreCheckAlignment(
     ULONGLONG Offset
     )
 {
+    PRTL Rtl;
     PVOID NextAddress;
     ULONGLONG NextAddressAlignment;
     volatile TRACE_STORE_MEMORY_MAP *MemoryMap;
@@ -326,8 +327,9 @@ TraceStoreCheckAlignment(
         return TRUE;
     }
 
+    Rtl = TraceStore->Rtl;
     NextAddress = RtlOffsetToPointer(MemoryMap->NextAddress, Offset);
-    NextAddressAlignment = GetAddressAlignment(NextAddress);
+    NextAddressAlignment = GetAddressAlignment(Rtl, (ULONG_PTR)NextAddress);
 
     return (Alignment < NextAddressAlignment);
 }

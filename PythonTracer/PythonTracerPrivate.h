@@ -241,7 +241,7 @@ IsFunctionOfInterestStringTable(
 
     StringTableApi = Context->StringTableApi;
     IsPrefixOfStringInTable = StringTableApi->IsPrefixOfStringInTable;
-    Index = IsPrefixOfStringInTable(StringTable, ModuleName, NULL);
+    Index = IsPrefixOfStringInTable(Rtl, StringTable, ModuleName, NULL);
 
     return (Index != NO_MATCH_FOUND);
 }

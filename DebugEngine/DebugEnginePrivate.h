@@ -76,7 +76,7 @@ IsValidDebugEngineCommandId(
         (CommandId == ExamineSymbolsCommandId) || (
             CommandId >= UnassembleFunctionCommandId &&
             CommandId < DebugEngineInvalidCommandId &&
-            IsPowerOf2(CommandId)
+            IsPowerOfTwo(CommandId)
         )
     );
 }
@@ -84,6 +84,7 @@ IsValidDebugEngineCommandId(
 FORCEINLINE
 LONG
 CommandIdToArrayIndex(
+    _In_ PRTL Rtl,
     _In_ DEBUG_ENGINE_COMMAND_ID CommandId
     )
 {
@@ -91,7 +92,7 @@ CommandIdToArrayIndex(
         return -1;
     }
 
-    return TrailingZeros(CommandId);
+    return Rtl->TrailingZeros32(CommandId);
 }
 
 typedef union _DEBUG_ENGINE_COMMAND_TYPE {

@@ -18,6 +18,7 @@ Abstract:
 _Use_decl_annotations_
 STRING_TABLE_INDEX
 IsPrefixOfStringInSingleTableInline(
+    PRTL Rtl,
     PSTRING_TABLE StringTable,
     PSTRING String,
     PSTRING_MATCH Match
@@ -31,6 +32,8 @@ Routine Description:
     or is equal to" the search string.
 
 Arguments:
+
+    Rtl - Supplies a pointer to an RTL instance.
 
     StringTable - Supplies a pointer to a STRING_TABLE struct.
 
@@ -304,7 +307,10 @@ Return Value:
 
             TargetString = &StringTable->pStringArray->Strings[Index];
 
-            CharactersMatched = IsPrefixMatch(String, TargetString, 16);
+            CharactersMatched = IsPrefixMatch(Rtl,
+                                              String,
+                                              TargetString,
+                                              16);
 
             if (CharactersMatched == NO_MATCH_FOUND) {
 

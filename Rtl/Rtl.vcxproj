@@ -90,6 +90,7 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="Rtl.h" />
     <ClInclude Include="Time.h" />
+    <ClInclude Include="BitManipulation.h" />
     <ClInclude Include="__C_specific_handler.h" />
   </ItemGroup>
   <ItemGroup>
@@ -119,6 +120,7 @@
     <ClCompile Include="SymbolLoader.c" />
     <ClCompile Include="..\DebugEngine\DebugEngineInterfaces.c" />
     <ClCompile Include="UnicodeString.c" />
+    <ClCompile Include="BitManipulation.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AsmLib\AsmLib.vcxproj">

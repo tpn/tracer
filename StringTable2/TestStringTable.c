@@ -299,7 +299,7 @@ Return Value:
             // We're finally ready to invoke the function!
             //
 
-            Result = IsPrefix(StringTable, InputString, &Match);
+            Result = IsPrefix(Rtl, StringTable, InputString, &Match);
 
             //
             // If requested, verify the result is what we expect.

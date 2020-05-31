@@ -75,6 +75,12 @@
     <ClInclude Include="HeapAllocator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="BitManipulation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BitManipulation.c">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">

@@ -1384,6 +1384,7 @@ Return Value:
 
 --*/
 {
+    PRTL Rtl;
     USHORT NumaNode;
     ULONG ProcessId;
     ULONG ThreadId;
@@ -1408,6 +1409,8 @@ Return Value:
     if (!TraceStore->HasFlatMapping) {
         __debugbreak();
     }
+
+    Rtl = TraceStore->Rtl;
 
     //
     // Initialize local variables.

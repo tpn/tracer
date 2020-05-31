@@ -277,6 +277,7 @@ Return Value:
         PTRACE_STORE_FIELD_RELOCS FieldRelocs;
 
         Success = ValidateFieldRelocationsArray(
+            Rtl,
             FieldRelocations,
             &NumberOfElements,
             &MaxInner
@@ -317,7 +318,7 @@ Return Value:
                 }
 
                 FirstFieldReloc = FieldRelocs->Relocations;
-                AssertAlignedTraceStoreFieldReloc(FirstFieldReloc);
+                AssertAlignedTraceStoreFieldReloc(Rtl, FirstFieldReloc);
 
                 //
                 // Loop through the array of inner fields.  This serves two

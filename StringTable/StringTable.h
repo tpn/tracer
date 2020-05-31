@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2016 Trent Nelson <trent@trent.me>
+Copyright (c) 2016-2020 Trent Nelson <trent@trent.me>
 
 Module Name:
 
@@ -493,6 +493,7 @@ _Check_return_
 _Success_(return != 0)
 PSTRING_TABLE
 (CREATE_STRING_TABLE)(
+    _In_ PRTL Rtl,
     _In_ PALLOCATOR StringTableAllocator,
     _In_ PALLOCATOR StringArrayAllocator,
     _In_ PSTRING_ARRAY StringArray,
@@ -534,6 +535,7 @@ typedef CREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE  \
 typedef
 STRING_TABLE_INDEX
 (SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH)(
+    _In_ PRTL Rtl,
     _In_ PSTRING_TABLE StringTable,
     _In_ PCSTRING String,
     _In_ USHORT Index,
@@ -1058,6 +1060,7 @@ GetBitmapForViablePrefixSlotsByLengths(
 FORCEINLINE
 USHORT
 IsPrefixMatch(
+    _In_ PRTL Rtl,
     _In_ PCSTRING SearchString,
     _In_ PCSTRING TargetString,
     _In_ USHORT Offset
@@ -1114,8 +1117,10 @@ StartYmm:
         // reverting to an unaligned load when not.
         //
 
-        SearchStringAlignment = GetAddressAlignment(SearchBuffer);
-        TargetStringAlignment = GetAddressAlignment(TargetBuffer);
+        SearchStringAlignment = GetAddressAlignment(Rtl,
+                                                    (ULONG_PTR)SearchBuffer);
+        TargetStringAlignment = GetAddressAlignment(Rtl,
+                                                    (ULONG_PTR)TargetBuffer);
 
         if (SearchStringAlignment < 32) {
             SearchYmm = _mm256_loadu_si256((PYMMWORD)SearchBuffer);
@@ -1193,7 +1198,8 @@ StartXmm:
         // reverting to an unaligned load when not.
         //
 
-        SearchStringAlignment = GetAddressAlignment(SearchBuffer);
+        SearchStringAlignment = GetAddressAlignment(Rtl,
+                                                    (ULONG_PTR)SearchBuffer);
 
         if (SearchStringAlignment < 16) {
             SearchXmm = _mm_loadu_si128((XMMWORD *)SearchBuffer);
@@ -1353,6 +1359,7 @@ _Success_(return != 0)
 FORCEINLINE
 BOOL
 AssertStringTableFieldAlignment(
+    _In_ PRTL Rtl,
     _In_ PSTRING_TABLE StringTable
     )
 {

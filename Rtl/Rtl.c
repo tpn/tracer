@@ -4809,6 +4809,246 @@ InitializeCrt(
     return TRUE;
 }
 
+#if defined(_M_AMD64) || defined(_M_X64) || defined(_M_IX86)
+_Use_decl_annotations_
+HRESULT
+RtlInitializeCpuFeatures(
+    PRTL Rtl
+    )
+/*++
+
+Routine Description:
+
+    This routine calls the x86/x64 CPUID function and initializes the CPU
+    features structure in the provided Rtl instance.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an RTL instance.
+
+Return Value:
+
+    S_OK - Success.
+
+--*/
+{
+    HRESULT Result;
+    CPU_INFO CpuInfo;
+    PRTL_CPU_FEATURES Features;
+    const LONG BaseExtendedId = 0x80000000;
+    LONG ExtendedId;
+    LONG HighestId;
+    LONG HighestExtendedId;
+    PSTRING Brand;
+
+    Features = &Rtl->CpuFeatures;
+    ZeroStruct(CpuInfo);
+
+    __cpuid((PINT)&CpuInfo.AsIntArray, 0);
+
+    HighestId = CpuInfo.Eax;
+
+    Features->Vendor.IsIntel = (
+        CpuInfo.Ebx == (LONG)'uneG' &&
+        CpuInfo.Ecx == (LONG)'letn' &&
+        CpuInfo.Edx == (LONG)'Ieni'
+    );
+
+    if (!Features->Vendor.IsIntel) {
+        Features->Vendor.IsAMD = (
+            CpuInfo.Ebx == (LONG)'htuA' &&
+            CpuInfo.Ecx == (LONG)'DMAc' &&
+            CpuInfo.Edx == (LONG)'itne'
+        );
+
+        if (!Features->Vendor.IsAMD) {
+            Features->Vendor.Unknown = TRUE;
+        }
+    }
+
+    if (HighestId >= 1) {
+        ZeroStruct(CpuInfo);
+        __cpuidex((PINT)&CpuInfo.AsIntArray, 1, 0);
+
+        Features->F1Ecx.AsLong = CpuInfo.Ecx;
+        Features->F1Edx.AsLong = CpuInfo.Edx;
+    }
+
+    if (HighestId >= 7) {
+        ZeroStruct(CpuInfo);
+        __cpuidex((PINT)&CpuInfo.AsIntArray, 7, 0);
+
+        Features->F7Ebx.AsLong = CpuInfo.Ebx;
+        Features->F7Ecx.AsLong = CpuInfo.Ecx;
+    }
+
+    ZeroStruct(CpuInfo);
+    __cpuid((PINT)&CpuInfo.AsIntArray, BaseExtendedId);
+    HighestExtendedId = CpuInfo.Eax;
+
+    ExtendedId = BaseExtendedId + 1;
+    if (HighestExtendedId >= ExtendedId) {
+        ZeroStruct(CpuInfo);
+        __cpuidex((PINT)&CpuInfo.AsIntArray, ExtendedId, 0);
+
+        Features->F81Ecx.AsLong = CpuInfo.Ecx;
+        Features->F81Edx.AsLong = CpuInfo.Edx;
+    }
+
+    Features->HighestFeatureId = HighestId;
+    Features->HighestExtendedFeatureId = HighestExtendedId;
+
+    if (Features->Vendor.IsIntel) {
+        Features->Intel.HLE = Features->HLE;
+        Features->Intel.RTM = Features->RTM;
+        Features->Intel.BMI1 = Features->BMI1;
+        Features->Intel.BMI2 = Features->BMI2;
+        Features->Intel.LZCNT = Features->LZCNT;
+        Features->Intel.POPCNT = Features->POPCNT;
+        Features->Intel.SYSCALL = Features->SYSCALLSYSRET;
+        Features->Intel.RDTSCP = Features->RDTSCP_IA32_TSC_AUX;
+    } else if (Features->Vendor.IsAMD) {
+        LONG F81Ecx;
+        LONG F81Edx;
+
+        F81Ecx = Features->F81Ecx.AsLong;
+        F81Edx = Features->F81Edx.AsLong;
+
+        Features->AMD.ABM = BooleanFlagOn(F81Ecx, 1 << 5);
+        Features->AMD.SSE4A = BooleanFlagOn(F81Ecx, 1 << 6);
+        Features->AMD.XOP = BooleanFlagOn(F81Ecx, 1 << 11);
+        Features->AMD.TBM = BooleanFlagOn(F81Ecx, 1 << 21);
+        Features->AMD.SVM = BooleanFlagOn(F81Ecx, 1 << 2);
+        Features->AMD.IBS = BooleanFlagOn(F81Ecx, 1 << 10);
+        Features->AMD.LWP = BooleanFlagOn(F81Ecx, 1 << 15);
+        Features->AMD.MMXEXT = BooleanFlagOn(F81Edx, 1 << 22);
+        Features->AMD.THREEDNOW = BooleanFlagOn(F81Edx, 1 << 31);
+        Features->AMD.THREEDNOWEXT = BooleanFlagOn(F81Edx, 1 << 30);
+    }
+
+    //
+    // Capture the CPU brand string if available.
+    //
+
+    Brand = &Features->Brand;
+    Brand->Length = 0;
+    Brand->MaximumLength = sizeof(Features->BrandBuffer);
+    Brand->Buffer = (PCHAR)&Features->BrandBuffer;
+
+    if (HighestExtendedId >= (BaseExtendedId + 4)) {
+
+        __cpuid((PINT)&CpuInfo.AsIntArray, BaseExtendedId + 2);
+        CopyMemory(Brand->Buffer, CpuInfo.AsCharArray, 16);
+
+        __cpuid((PINT)&CpuInfo.AsIntArray, BaseExtendedId + 3);
+        CopyMemory(Brand->Buffer + 16, CpuInfo.AsCharArray, 16);
+
+        __cpuid((PINT)&CpuInfo.AsIntArray, BaseExtendedId + 4);
+        CopyMemory(Brand->Buffer + 32, CpuInfo.AsCharArray, 16);
+
+        Brand->Length = (USHORT)strlen(Brand->Buffer);
+        _Analysis_assume_(Brand->Length <= 48);
+        ASSERT(Brand->Length < Brand->MaximumLength);
+
+        //
+        // Disable the following warning:
+        //
+        //  warning C6385: Reading invalid data from 'Brand->Buffer':
+        //      the readable size is '_Old_13`16' bytes, but
+        //      'Brand->Length' bytes may be read.
+        //
+
+#pragma warning(push)
+#pragma warning(disable: 6385)
+        ASSERT(Brand->Buffer[Brand->Length] == '\0');
+#pragma warning(pop)
+
+    }
+
+    Result = S_OK;
+
+    return Result;
+}
+
+
+_Use_decl_annotations_
+HRESULT
+RtlInitializeBitManipulationFunctionPointers(
+    PRTL Rtl
+    )
+/*++
+
+Routine Description:
+
+    This routine initializes the bit mainpulation function pointers in the
+    provided Rtl instance based on the CPU features.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an RTL instance.
+
+Return Value:
+
+    S_OK - Success.
+
+--*/
+{
+    PRTL_CPU_FEATURES Features;
+    PRTL_BIT_MANIPULATION_FUNCTIONS Functions;
+
+    Features = &Rtl->CpuFeatures;
+    Functions = &Rtl->RtlBitManipulationFunctions;
+
+    if (Features->Vendor.IsIntel != FALSE) {
+
+#define EXPAND_AS_INTEL_FUNCTION_ASSIGNMENT(Upper,        \
+                                            Name,         \
+                                            IntelFeature, \
+                                            Unused4)      \
+    if (Features->Intel.IntelFeature != FALSE) {          \
+        Functions->Name = Name##_##IntelFeature;          \
+    } else {                                              \
+        Functions->Name = Name##_C;                       \
+    }
+
+    RTL_BIT_MANIPULATION_FUNCTION_TABLE_ENTRY(
+        EXPAND_AS_INTEL_FUNCTION_ASSIGNMENT
+    )
+
+#undef EXPAND_AS_INTEL_FUNCTION_ASSIGNMENT
+
+    } else if (Features->Vendor.IsAMD != FALSE) {
+
+#define EXPAND_AS_AMD_FUNCTION_ASSIGNMENT(Upper,        \
+                                          Name,         \
+                                          IntelFeature, \
+                                          AmdFeature)   \
+    if (Features->AMD.AmdFeature != FALSE) {            \
+        Functions->Name = Name##_##IntelFeature;        \
+    } else {                                            \
+        Functions->Name = Name##_C;                     \
+    }
+
+    RTL_BIT_MANIPULATION_FUNCTION_TABLE_ENTRY(EXPAND_AS_AMD_FUNCTION_ASSIGNMENT)
+
+#undef EXPAND_AS_AMD_FUNCTION_ASSIGNMENT
+
+    } else {
+
+#define EXPAND_AS_C_FUNCTION_ASSIGNMENT(Upper, Name, Unused3, Unused4) \
+    Functions->Name = Name##_C;
+
+    RTL_BIT_MANIPULATION_FUNCTION_TABLE_ENTRY(EXPAND_AS_C_FUNCTION_ASSIGNMENT);
+
+#undef EXPAND_AS_C_FUNCTION_ASSIGNMENT
+
+    }
+
+    return S_OK;
+
+}
+#endif // defined(_M_AMD64) || defined(_M_X64) || defined(_M_IX86)
+
 
 _Use_decl_annotations_
 BOOL
@@ -4818,6 +5058,7 @@ InitializeRtl(
     )
 {
     BOOL Success;
+    HRESULT Result;
     HANDLE HeapHandle;
     PRTL_LDR_NOTIFICATION_TABLE Table;
 
@@ -4945,6 +5186,16 @@ InitializeRtl(
 
     if (!Success) {
         Rtl->LastError = GetLastError();
+        return FALSE;
+    }
+
+    Result = RtlInitializeCpuFeatures(Rtl);
+    if (FAILED(Result)) {
+        return FALSE;
+    }
+
+    Result = RtlInitializeBitManipulationFunctionPointers(Rtl);
+    if (FAILED(Result)) {
         return FALSE;
     }
 

@@ -220,10 +220,11 @@ Return Value:
     //
 
     Session = Output->Session;
+    Rtl = Session->Rtl;
     StringTable = Session->ExamineSymbolsPrefixStringTable;
     IsPrefixOfStringInTable = Session->StringTableApi->IsPrefixOfStringInTable;
 
-    MatchIndex = IsPrefixOfStringInTable(StringTable, Line, &Match);
+    MatchIndex = IsPrefixOfStringInTable(Rtl, StringTable, Line, &Match);
 
     if (MatchIndex == NO_MATCH_FOUND) {
 
@@ -263,7 +264,6 @@ Return Value:
         goto Error;
     }
 
-    Rtl = Session->Rtl;
     RtlCharToInteger = Rtl->RtlCharToInteger;
 
     SymbolScope = MatchIndex;
@@ -423,7 +423,7 @@ Return Value:
 
 RetryBasicTypeMatch:
 
-    MatchIndex = IsPrefixOfStringInTable(StringTable, &BasicType, &Match);
+    MatchIndex = IsPrefixOfStringInTable(Rtl, StringTable, &BasicType, &Match);
 
     if (MatchIndex == NO_MATCH_FOUND) {
         if (++MatchAttempts >= NumberOfStringTables) {
@@ -1178,7 +1178,10 @@ RetryBasicTypeMatch:
 
 RetryArgumentMatch:
 
-        MatchIndex = IsPrefixOfStringInTable(StringTable, ArgumentType, &Match);
+        MatchIndex = IsPrefixOfStringInTable(Rtl,
+                                             StringTable,
+                                             ArgumentType,
+                                             &Match);
 
         if (MatchIndex == NO_MATCH_FOUND) {
             if (++MatchAttempts >= NumberOfStringTables) {
@@ -1303,7 +1306,8 @@ RetryArgumentMatch:
             if (Argument->Flags.IsUnion) {
                 StringTable = Session->FunctionArgumentVectorTypeStringTable1;
 
-                MatchIndex = IsPrefixOfStringInTable(StringTable,
+                MatchIndex = IsPrefixOfStringInTable(Rtl,
+                                                     StringTable,
                                                      ArgumentTypeName,
                                                      &Match);
 

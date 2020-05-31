@@ -74,53 +74,6 @@ Return Value:
 /*++
 
     VOID
-    LoadSearchStringIntoXmmRegister_AlignmentCheck(
-        _In_ STRING_SLOT Slot,
-        _In_ PSTRING String,
-        _In_ USHORT LengthVar
-        );
-
-Routine Description:
-
-    This routine checks to see if a page boundary will be crossed if 16-bytes
-    are loaded from the address supplied by String->Buffer.  If a page boundary
-    will be crossed, a __movsb() intrinsic is used to only copy String->Length
-    bytes into the given Slot.
-
-    If no page boundary will be crossed by a 128-bit load, the alignment of
-    the address supplied by String->Buffer is checked.  If the alignment isn't
-    at least on a 16-byte boundary, an unaligned load will be issued via the
-    _mm_loadu_si128() intrinsic, otherwise, an _mm_load_si128() will be used.
-
-Arguments:
-
-    Slot - Supplies the STRING_SLOT local variable name within the calling
-        function that will receive the results of the load operation.
-
-    String - Supplies the name of the PSTRING variable that is to be loaded
-        into the slot.  This will usually be one of the function parameters.
-
-    LengthVar - Supplies the name of a USHORT local variable that will receive
-        the value of min(String->Length, 16).
-
-Return Value:
-
-    None.
-
---*/
-#define LoadSearchStringIntoXmmRegister_AlignmentCheck(Slot, String,LengthVar) \
-    LengthVar = min(String->Length, 16);                                       \
-    if (PointerToOffsetCrossesPageBoundary(String->Buffer, 16)) {              \
-        __movsb(Slot.Char, String->Buffer, LengthVar);                         \
-    } else if (GetAddressAlignment(String->Buffer) < 16) {                     \
-        Slot.CharsXmm = _mm_loadu_si128((PXMMWORD)String->Buffer);             \
-    } else {                                                                   \
-        Slot.CharsXmm = _mm_load_si128((PXMMWORD)String->Buffer);              \
-    }
-
-/*++
-
-    VOID
     LoadSearchStringIntoXmmRegister_AlwaysUnaligned(
         _In_ STRING_SLOT Slot,
         _In_ PSTRING String,
@@ -153,10 +106,8 @@ Return Value:
     LengthVar = min(String->Length, 16);                                   \
     if (PointerToOffsetCrossesPageBoundary(String->Buffer, 16)) {          \
         __movsb(Slot.Char, String->Buffer, LengthVar);                     \
-    } else if (GetAddressAlignment(String->Buffer) < 16) {                 \
-        Slot.CharsXmm = _mm_loadu_si128(String->Buffer);                   \
     } else {                                                               \
-        Slot.CharsXmm = _mm_load_si128(String->Buffer);                    \
+        Slot.CharsXmm = _mm_loadu_si128(String->Buffer);                   \
     }
 
 /*++
@@ -226,7 +177,7 @@ Return Value:
 //
 
 #define LoadSearchStringIntoXmmRegister            \
-    LoadSearchStringIntoXmmRegister_AlignmentCheck
+    LoadSearchStringIntoXmmRegister_AlwaysMovsb
 
 #endif
 

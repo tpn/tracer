@@ -159,7 +159,7 @@ Benchmark1(
     STRING AlignedInput;
 
     ZeroStruct(InputBuffer);
-    Alignment = GetAddressAlignment(&InputBuffer);
+    Alignment = GetAddressAlignment(Rtl, (ULONG_PTR)&InputBuffer);
     ASSERT(Alignment >= 32);
 
     OutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -231,7 +231,8 @@ Benchmark1(
         for (Index = 0; Index < NumberOfNtfsTestInputs; Index++) {
             Input = &NtfsTestInputs[Index];
 
-            Alignment = GetAddressAlignment(Input->String->Buffer);
+            Alignment = GetAddressAlignment(Rtl,
+                                            (ULONG_PTR)Input->String->Buffer);
             OUTPUT_STRING(Input->String);
             OUTPUT_SEP();
             OUTPUT_INT(Alignment);
@@ -305,7 +306,7 @@ Benchmark1(
             Func = &IsPrefixFunctions[FuncIndex];
             IsPrefix = LOAD_FUNCTION_FROM_OFFSET(Api, Func->Offset);
 
-            Result = IsPrefix(StringTable, &AlignedInput, NULL);
+            Result = IsPrefix(Rtl, StringTable, &AlignedInput, NULL);
 
             if (Func->Verify) {
                 ASSERT(Result == Input->Expected);
@@ -316,7 +317,7 @@ Benchmark1(
 
             YIELD_EXECUTION();
             for (Index = 0; Index < Warmup; Index++) {
-                Result = IsPrefix(StringTable, &AlignedInput, NULL);
+                Result = IsPrefix(Rtl, StringTable, &AlignedInput, NULL);
             }
 
             RESET_TIMESTAMP();
@@ -324,7 +325,7 @@ Benchmark1(
             while (Count--) {
                 START_TIMESTAMP();
                 for (Index = 0; Index < Iterations; Index++) {
-                    Result = IsPrefix(StringTable, &AlignedInput, NULL);
+                    Result = IsPrefix(Rtl, StringTable, &AlignedInput, NULL);
                 }
                 END_TIMESTAMP();
             }

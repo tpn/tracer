@@ -17,6 +17,7 @@ Abstract:
 _Use_decl_annotations_
 PSTRING_TABLE
 CreateStringTable(
+    PRTL Rtl,
     PALLOCATOR StringTableAllocator,
     PALLOCATOR StringArrayAllocator,
     PSTRING_ARRAY StringArray,
@@ -39,6 +40,8 @@ Routine Description:
     longer needed in order to ensure resources are released.
 
 Arguments:
+
+    Rtl - Supplies a pointer to an RTL instance.
 
     StringTableAllocator - Supplies a pointer to an ALLOCATOR structure which
         will be used for creating the STRING_TABLE.
@@ -72,6 +75,10 @@ Return Value:
     // Validate arguments.
     //
 
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return NULL;
+    }
+
     if (!ARGUMENT_PRESENT(StringTableAllocator)) {
         return NULL;
     }
@@ -96,7 +103,8 @@ Return Value:
 
     if (NumberOfTables == 1) {
 
-        return CreateSingleStringTable(StringTableAllocator,
+        return CreateSingleStringTable(Rtl,
+                                       StringTableAllocator,
                                        StringArrayAllocator,
                                        StringArray,
                                        CopyArray);
@@ -109,6 +117,7 @@ Return Value:
 _Use_decl_annotations_
 PSTRING_TABLE
 CreateSingleStringTable(
+    PRTL Rtl,
     PALLOCATOR StringTableAllocator,
     PALLOCATOR StringArrayAllocator,
     PSTRING_ARRAY SourceStringArray,
@@ -140,6 +149,10 @@ Routine Description:
     //
     // Validate arguments.
     //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return NULL;
+    }
 
     if (!ARGUMENT_PRESENT(StringTableAllocator)) {
         return NULL;
@@ -217,7 +230,7 @@ Routine Description:
     // aligned correctly.
     //
 
-    if (!AssertStringTableFieldAlignment(StringTable)) {
+    if (!AssertStringTableFieldAlignment(Rtl, StringTable)) {
         DestroyStringTable(StringTableAllocator,
                            StringArrayAllocator,
                            StringTable);
@@ -445,7 +458,8 @@ Return Value:
     // Create the string table from the newly-created string array.
     //
 
-    NewTable = CreateStringTable(StringTableAllocator,
+    NewTable = CreateStringTable(Rtl,
+                                 StringTableAllocator,
                                  StringArrayAllocator,
                                  StringArray,
                                  FALSE);

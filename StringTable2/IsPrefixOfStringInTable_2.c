@@ -19,6 +19,7 @@ Abstract:
 _Use_decl_annotations_
 STRING_TABLE_INDEX
 IsPrefixOfStringInTable_2(
+    PRTL Rtl,
     PSTRING_TABLE StringTable,
     PSTRING String,
     PSTRING_MATCH Match
@@ -278,7 +279,7 @@ Return Value:
 
             TargetString = &StringTable->pStringArray->Strings[Index];
 
-            CharactersMatched = IsPrefixMatchAvx2(String, TargetString, 16);
+            CharactersMatched = IsPrefixMatchAvx2(Rtl, String, TargetString, 16);
 
             if (CharactersMatched == NO_MATCH_FOUND) {
 

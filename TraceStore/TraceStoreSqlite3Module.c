@@ -925,6 +925,7 @@ TraceStoreSqlite3ModuleFindFunction(
     PVOID *ArgumentPointer
     )
 {
+    PRTL Rtl;
     USHORT MatchIndex;
     STRING String;
     PCSQLITE3 Sqlite3;
@@ -942,6 +943,7 @@ TraceStoreSqlite3ModuleFindFunction(
                                    Sqlite3VirtualTable);
 
     Db = TraceStore->Db;
+    Rtl = Db->Rtl;
     Sqlite3 = Db->Sqlite3;
 
     String.Length = (USHORT)strlen(FunctionName);
@@ -951,7 +953,7 @@ TraceStoreSqlite3ModuleFindFunction(
     StringTable = Db->FunctionStringTable1;
     IsPrefixOfStringInTable = Db->StringTableApi.IsPrefixOfStringInTable;
 
-    MatchIndex = IsPrefixOfStringInTable(StringTable, &String, &Match);
+    MatchIndex = IsPrefixOfStringInTable(Rtl, StringTable, &String, &Match);
     if (MatchIndex == NO_MATCH_FOUND) {
         return SQLITE_ERROR;
     }

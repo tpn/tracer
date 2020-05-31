@@ -124,7 +124,10 @@ Return Value:
     StringTable = Session->CommandLineOptionsStringTable;
     IsPrefixOfStringInTable = Session->StringTableApi->IsPrefixOfStringInTable;
 
-    MatchIndex = IsPrefixOfStringInTable(StringTable, &OptionString, &Match);
+    MatchIndex = IsPrefixOfStringInTable(Rtl,
+                                         StringTable,
+                                         &OptionString,
+                                         &Match);
 
     CHECKED_MSG(MatchIndex != NO_MATCH_FOUND, DEBUG_ENGINE_USAGE_STRING);
 

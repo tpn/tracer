@@ -72,12 +72,13 @@ PDEBUG_ENGINE_COMMAND_TEMPLATE DebugEngineCommandTemplates[];
 FORCEINLINE
 PDEBUG_ENGINE_COMMAND_TEMPLATE
 CommandIdToCommandTemplate(
+    _In_ PRTL Rtl,
     _In_ DEBUG_ENGINE_COMMAND_ID CommandId
     )
 {
     LONG ArrayIndex;
 
-    ArrayIndex = CommandIdToArrayIndex(CommandId);
+    ArrayIndex = CommandIdToArrayIndex(Rtl, CommandId);
     if (ArrayIndex < 0) {
         return NULL;
     }

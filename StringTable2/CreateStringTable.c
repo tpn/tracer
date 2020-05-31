@@ -264,7 +264,7 @@ Routine Description:
     // aligned correctly.
     //
 
-    if (!AssertStringTableFieldAlignment(StringTable)) {
+    if (!AssertStringTableFieldAlignment(Rtl, StringTable)) {
         DestroyStringTable(StringTableAllocator,
                            StringArrayAllocator,
                            StringTable);

@@ -509,6 +509,7 @@ typedef LINKED_LINE **PPLINKED_LINE;
 #include "Memory.h"
 #include "HeapAllocator.h"
 #include "Commandline.h"
+#include "BitManipulation.h"
 
 typedef _Null_terminated_ CONST CHAR *PCSZ;
 typedef CONST CHAR *PCCHAR;
@@ -525,6 +526,42 @@ typedef _Null_terminated_ const wchar_t UNALIGNED* STRSAFE_LPCUWSTR;
 typedef  const char* STRSAFE_PCNZCH;
 typedef  const wchar_t* STRSAFE_PCNZWCH;
 typedef  const wchar_t UNALIGNED* STRSAFE_PCUNZWCH;
+
+//
+// Define a helper union that allows easy access to the bytes and shorts
+// making up a ULONG.
+//
+
+typedef union ULONG_BYTES {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        BYTE Byte1;
+        BYTE Byte2;
+        BYTE Byte3;
+        BYTE Byte4;
+    };
+
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        CHAR Char1;
+        CHAR Char2;
+        CHAR Char3;
+        CHAR Char4;
+    };
+
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        SHORT Word1;
+        SHORT Word2;
+    };
+
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        USHORT UWord1;
+        USHORT UWord2;
+    };
+
+    LONG AsLong;
+    ULONG AsULong;
+} ULONG_BYTES;
+C_ASSERT(sizeof(ULONG_BYTES) == sizeof(ULONG));
+typedef ULONG_BYTES *PULONG_BYTES;
 
 
 #ifdef _M_X64
@@ -6231,6 +6268,593 @@ typedef struct _DBGENG {
     _DBGENG_FUNCTIONS_HEAD
 } DBGENG, *PDBGENG;
 
+#if defined(_M_AMD64) || defined(_M_X64) || defined(_M_IX86)
+////////////////////////////////////////////////////////////////////////////////
+// Intel/AMD x86/x64 CPU Features
+////////////////////////////////////////////////////////////////////////////////
+
+typedef union _CPU_INFO {
+    struct {
+        LONG Eax;
+        LONG Ebx;
+        LONG Ecx;
+        LONG Edx;
+    };
+    struct {
+        ULONG_BYTES EaxBytes;
+        ULONG_BYTES EbxBytes;
+        ULONG_BYTES EcxBytes;
+        ULONG_BYTES EdxBytes;
+    };
+    INT AsIntArray[4];
+    LONG AsLongArray[4];
+    ULONG AsULongArray[4];
+    CHAR AsCharArray[16];
+} CPU_INFO;
+typedef CPU_INFO *PCPU_INFO;
+
+#define EXPAND_AS_CPU_FEATURE_BYTE(Name, Offset, Bits) \
+    BYTE Name[Bits];
+
+#define EXPAND_AS_CPU_FEATURE_BITFLAG(Name, Offset, Bits) \
+    ULONG Name:Bits;
+
+#define EXPAND_AS_CPU_FEATURE_C_ASSERT_OFFSET(Name, Offset, Bits) \
+    C_ASSERT(FIELD_OFFSET(Type, Name) == Offset);
+
+//
+// F1_ECX
+//
+
+#define RTL_CPU_FEATURES_F1_ECX_TABLE(FIRST_ENTRY, \
+                                      ENTRY,       \
+                                      LAST_ENTRY)  \
+    FIRST_ENTRY(SSE3, 0, 1)                        \
+    ENTRY(PCLMULQDQ, 1, 1)                         \
+    ENTRY(DTES64, 2, 1)                            \
+    ENTRY(MONITOR, 3, 1)                           \
+    ENTRY(DSCPL, 4, 1)                             \
+    ENTRY(VMX, 5, 1)                               \
+    ENTRY(SMX, 6, 1)                               \
+    ENTRY(EIST, 7, 1)                              \
+    ENTRY(TM2, 8, 1)                               \
+    ENTRY(SSSE3, 9, 1)                             \
+    ENTRY(CNXTID, 10, 1)                           \
+    ENTRY(SDBG, 11, 1)                             \
+    ENTRY(FMA, 12, 1)                              \
+    ENTRY(CMPXCHG16B, 13, 1)                       \
+    ENTRY(XTPRUC, 14, 1)                           \
+    ENTRY(PDCM, 15, 1)                             \
+    ENTRY(_Reserved_16_F1_ECX, 16, 1)              \
+    ENTRY(PCID, 17, 1)                             \
+    ENTRY(DCA, 18, 1)                              \
+    ENTRY(SSE41, 19, 1)                            \
+    ENTRY(SSE42, 20, 1)                            \
+    ENTRY(X2APIC, 21, 1)                           \
+    ENTRY(MOVBE, 22, 1)                            \
+    ENTRY(POPCNT, 23, 1)                           \
+    ENTRY(TSCD, 24, 1)                             \
+    ENTRY(AESNI, 25, 1)                            \
+    ENTRY(XSAVE, 26, 1)                            \
+    ENTRY(OSXSAVE, 27, 1)                          \
+    ENTRY(AVX, 28, 1)                              \
+    ENTRY(F16C, 29, 1)                             \
+    ENTRY(RDRAND, 30, 1)                           \
+    LAST_ENTRY(_NotUsed_31_F1_ECX, 31, 1)
+
+#define RTL_CPU_FEATURES_F1_ECX_TABLE_ENTRY(ENTRY) \
+    RTL_CPU_FEATURES_F1_ECX_TABLE(ENTRY,           \
+                                  ENTRY,           \
+                                  ENTRY)
+
+#pragma pack(push, 1)
+typedef struct _RTL_CPU_FEATURES_F1_ECX_AS_BYTES {
+    RTL_CPU_FEATURES_F1_ECX_TABLE_ENTRY(EXPAND_AS_CPU_FEATURE_BYTE)
+} RTL_CPU_FEATURES_F1_ECX_AS_BYTES;
+#pragma pack(pop)
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F1_ECX_AS_BYTES) ==
+         sizeof(ULONG) << 3);
+
+#define Type RTL_CPU_FEATURES_F1_ECX_AS_BYTES
+RTL_CPU_FEATURES_F1_ECX_TABLE_ENTRY(
+    EXPAND_AS_CPU_FEATURE_C_ASSERT_OFFSET
+);
+#undef Type
+
+typedef union _RTL_CPU_FEATURES_F1_ECX {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        RTL_CPU_FEATURES_F1_ECX_TABLE_ENTRY(
+            EXPAND_AS_CPU_FEATURE_BITFLAG
+        )
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_CPU_FEATURES_F1_ECX;
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F1_ECX) == sizeof(ULONG));
+typedef RTL_CPU_FEATURES_F1_ECX *PRTL_CPU_FEATURES_F1_ECX;
+
+//
+// F1_EDX
+//
+
+#define RTL_CPU_FEATURES_F1_EDX_TABLE(FIRST_ENTRY, \
+                                      ENTRY,       \
+                                      LAST_ENTRY)  \
+    FIRST_ENTRY(FPU, 0, 1)                         \
+    ENTRY(VME, 1, 1)                               \
+    ENTRY(DE, 2, 1)                                \
+    ENTRY(PSE, 3, 1)                               \
+    ENTRY(TSC, 4, 1)                               \
+    ENTRY(MSR, 5, 1)                               \
+    ENTRY(PAE, 6, 1)                               \
+    ENTRY(MCE, 7, 1)                               \
+    ENTRY(CX8, 8, 1)                               \
+    ENTRY(APIC, 9, 1)                              \
+    ENTRY(_Reserved_10_F1_EDX, 10, 1)              \
+    ENTRY(SEP, 11, 1)                              \
+    ENTRY(MTRR, 12, 1)                             \
+    ENTRY(PGE, 13, 1)                              \
+    ENTRY(MCA, 14, 1)                              \
+    ENTRY(CMOV, 15, 1)                             \
+    ENTRY(PAT, 16, 1)                              \
+    ENTRY(PSE36, 17, 1)                            \
+    ENTRY(PSN, 18, 1)                              \
+    ENTRY(CLFSH, 19, 1)                            \
+    ENTRY(_Reserved_20_F1_EDX, 20, 1)              \
+    ENTRY(DS, 21, 1)                               \
+    ENTRY(ACPI, 22, 1)                             \
+    ENTRY(MMX, 23, 1)                              \
+    ENTRY(FXSR, 24, 1)                             \
+    ENTRY(SSE, 25, 1)                              \
+    ENTRY(SSE2, 26, 1)                             \
+    ENTRY(SS, 27, 1)                               \
+    ENTRY(HTT, 28, 1)                              \
+    ENTRY(TM, 29, 1)                               \
+    ENTRY(_Reserved_30_F1_EDX, 30, 1)              \
+    LAST_ENTRY(PBE, 31, 1)
+
+#define RTL_CPU_FEATURES_F1_EDX_TABLE_ENTRY(ENTRY) \
+    RTL_CPU_FEATURES_F1_EDX_TABLE(ENTRY,           \
+                                  ENTRY,           \
+                                  ENTRY)
+
+#pragma pack(push, 1)
+typedef struct _RTL_CPU_FEATURES_F1_EDX_AS_BYTES {
+    RTL_CPU_FEATURES_F1_EDX_TABLE_ENTRY(EXPAND_AS_CPU_FEATURE_BYTE)
+} RTL_CPU_FEATURES_F1_EDX_AS_BYTES;
+#pragma pack(pop)
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F1_EDX_AS_BYTES) ==
+         sizeof(ULONG) << 3);
+
+#define Type RTL_CPU_FEATURES_F1_EDX_AS_BYTES
+RTL_CPU_FEATURES_F1_EDX_TABLE_ENTRY(
+    EXPAND_AS_CPU_FEATURE_C_ASSERT_OFFSET
+);
+#undef Type
+
+typedef union _RTL_CPU_FEATURES_F1_EDX {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        RTL_CPU_FEATURES_F1_EDX_TABLE_ENTRY(
+            EXPAND_AS_CPU_FEATURE_BITFLAG
+        )
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_CPU_FEATURES_F1_EDX;
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F1_EDX) == sizeof(ULONG));
+typedef RTL_CPU_FEATURES_F1_EDX *PRTL_CPU_FEATURES_F1_EDX;
+
+//
+// F7_EBX
+//
+
+#define RTL_CPU_FEATURES_F7_EBX_TABLE(FIRST_ENTRY, \
+                                      ENTRY,       \
+                                      LAST_ENTRY)  \
+    FIRST_ENTRY(FSGSBASE, 0, 1)                    \
+    ENTRY(IA32_TSC_ADJUST_MSR, 1, 1)               \
+    ENTRY(SGX, 2, 1)                               \
+    ENTRY(BMI1, 3, 1)                              \
+    ENTRY(HLE, 4, 1)                               \
+    ENTRY(AVX2, 5, 1)                              \
+    ENTRY(FDP_EXCPTN_ONLY, 6, 1)                   \
+    ENTRY(SMEP, 7, 1)                              \
+    ENTRY(BMI2, 8, 1)                              \
+    ENTRY(ERMS, 9, 1)                              \
+    ENTRY(INVPCID, 10, 1)                          \
+    ENTRY(RTM, 11, 1)                              \
+    ENTRY(RDTM, 12, 1)                             \
+    ENTRY(NOFPUCSDS, 13, 1)                        \
+    ENTRY(MPX, 14, 1)                              \
+    ENTRY(RDTA, 15, 1)                             \
+    ENTRY(AVX512F, 16, 1)                          \
+    ENTRY(AVX512DQ, 17, 1)                         \
+    ENTRY(RDSEED, 18, 1)                           \
+    ENTRY(ADX, 19, 1)                              \
+    ENTRY(SMAP, 20, 1)                             \
+    ENTRY(AVX512_IFMA, 21, 1)                      \
+    ENTRY(_Reserved_22_F7_EBX, 22, 1)              \
+    ENTRY(CLFLUSHOPT, 23, 1)                       \
+    ENTRY(CLWB, 24, 1)                             \
+    ENTRY(IPT, 25, 1)                              \
+    ENTRY(AVX512PF, 26, 1)                         \
+    ENTRY(AVX512ER, 27, 1)                         \
+    ENTRY(AVX512CD, 28, 1)                         \
+    ENTRY(SHA, 29, 1)                              \
+    ENTRY(AVX512BW, 30, 1)                         \
+    LAST_ENTRY(AVX512VL, 31, 1)
+
+#define RTL_CPU_FEATURES_F7_EBX_TABLE_ENTRY(ENTRY) \
+    RTL_CPU_FEATURES_F7_EBX_TABLE(ENTRY,           \
+                                  ENTRY,           \
+                                  ENTRY)
+
+#pragma pack(push, 1)
+typedef struct _RTL_CPU_FEATURES_F7_EBX_AS_BYTES {
+    RTL_CPU_FEATURES_F7_EBX_TABLE_ENTRY(EXPAND_AS_CPU_FEATURE_BYTE)
+} RTL_CPU_FEATURES_F7_EBX_AS_BYTES;
+#pragma pack(pop)
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F7_EBX_AS_BYTES) ==
+         sizeof(ULONG) << 3);
+
+#define Type RTL_CPU_FEATURES_F7_EBX_AS_BYTES
+RTL_CPU_FEATURES_F7_EBX_TABLE_ENTRY(
+    EXPAND_AS_CPU_FEATURE_C_ASSERT_OFFSET
+);
+#undef Type
+
+typedef union _RTL_CPU_FEATURES_F7_EBX {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        RTL_CPU_FEATURES_F7_EBX_TABLE_ENTRY(
+            EXPAND_AS_CPU_FEATURE_BITFLAG
+        )
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_CPU_FEATURES_F7_EBX;
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F7_EBX) == sizeof(ULONG));
+typedef RTL_CPU_FEATURES_F7_EBX *PRTL_CPU_FEATURES_F7_EBX;
+
+//
+// F7_ECX
+//
+
+#define RTL_CPU_FEATURES_F7_ECX_TABLE(FIRST_ENTRY, \
+                                      ENTRY,       \
+                                      LAST_ENTRY)  \
+    FIRST_ENTRY(PREFETCHWT1, 0, 1)                 \
+    ENTRY(AVX512_VBMI, 1, 1)                       \
+    ENTRY(UMIP, 2, 1)                              \
+    ENTRY(PKU, 3, 1)                               \
+    ENTRY(OSPKE, 4, 1)                             \
+    ENTRY(WAITPKG, 5, 1)                           \
+    ENTRY(_Reserved_6_7_F7_ECX, 6, 2)              \
+    ENTRY(GFNI, 8, 1)                              \
+    ENTRY(_Reserved_9_13_F7_ECX, 9, 5)             \
+    ENTRY(AVX512_VPOPCNTDQ, 14, 1)                 \
+    ENTRY(_Reserved_15_16_F7_ECX, 15, 2)           \
+    ENTRY(MAWAU, 17, 5)                            \
+    ENTRY(RDPID_IA32_TSC_AUX, 22, 1)               \
+    ENTRY(_Reserved_23_24_F7_ECX, 23, 2)           \
+    ENTRY(CLDEMOTE, 25, 1)                         \
+    ENTRY(_Reserved_26_F7_ECX, 26, 1)              \
+    ENTRY(MOVDIRI, 27, 1)                          \
+    ENTRY(MOVDIR64B, 28, 1)                        \
+    ENTRY(_Reserved_29_F7_ECX, 29, 1)              \
+    ENTRY(SGX_LC, 30, 1)                           \
+    LAST_ENTRY(_Reserved_30_F7_ECX, 31, 1)
+
+#define RTL_CPU_FEATURES_F7_ECX_TABLE_ENTRY(ENTRY) \
+    RTL_CPU_FEATURES_F7_ECX_TABLE(ENTRY,           \
+                                  ENTRY,           \
+                                  ENTRY)
+
+#pragma pack(push, 1)
+typedef struct _RTL_CPU_FEATURES_F7_ECX_AS_BYTES {
+    RTL_CPU_FEATURES_F7_ECX_TABLE_ENTRY(EXPAND_AS_CPU_FEATURE_BYTE)
+} RTL_CPU_FEATURES_F7_ECX_AS_BYTES;
+#pragma pack(pop)
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F7_ECX_AS_BYTES) ==
+         sizeof(ULONG) << 3);
+
+#define Type RTL_CPU_FEATURES_F7_ECX_AS_BYTES
+RTL_CPU_FEATURES_F7_ECX_TABLE_ENTRY(
+    EXPAND_AS_CPU_FEATURE_C_ASSERT_OFFSET
+);
+#undef Type
+
+typedef union _RTL_CPU_FEATURES_F7_ECX {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        RTL_CPU_FEATURES_F7_ECX_TABLE_ENTRY(
+            EXPAND_AS_CPU_FEATURE_BITFLAG
+        )
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_CPU_FEATURES_F7_ECX;
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F7_ECX) == sizeof(ULONG));
+typedef RTL_CPU_FEATURES_F7_ECX *PRTL_CPU_FEATURES_F7_ECX;
+
+//
+// F7_EDX
+//
+
+#define RTL_CPU_FEATURES_F7_EDX_TABLE(FIRST_ENTRY, \
+                                      ENTRY,       \
+                                      LAST_ENTRY)  \
+    FIRST_ENTRY(_Reserved_0_1_F7_EDX, 0, 2)        \
+    ENTRY(AVX512_4VNNIW, 2, 1)                     \
+    ENTRY(AVX512_4FMAPS, 3, 1)                     \
+    ENTRY(_Reserved_4_25_F7_EDX, 4, 22)            \
+    ENTRY(IBRS, 26, 1)                             \
+    ENTRY(STIBP, 27, 1)                            \
+    ENTRY(L1D_FLUSH, 28, 1)                        \
+    ENTRY(IA32_ARCH_CAPABILITIES, 29, 1)           \
+    ENTRY(IA32_CORE_CAPABILITIES, 30, 1)           \
+    LAST_ENTRY(SSBD, 31, 1)
+
+#define RTL_CPU_FEATURES_F7_EDX_TABLE_ENTRY(ENTRY) \
+    RTL_CPU_FEATURES_F7_EDX_TABLE(ENTRY,           \
+                                  ENTRY,           \
+                                  ENTRY)
+
+#pragma pack(push, 1)
+typedef struct _RTL_CPU_FEATURES_F7_EDX_AS_BYTES {
+    RTL_CPU_FEATURES_F7_EDX_TABLE_ENTRY(EXPAND_AS_CPU_FEATURE_BYTE)
+} RTL_CPU_FEATURES_F7_EDX_AS_BYTES;
+#pragma pack(pop)
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F7_EDX_AS_BYTES) ==
+         sizeof(ULONG) << 3);
+
+#define Type RTL_CPU_FEATURES_F7_EDX_AS_BYTES
+RTL_CPU_FEATURES_F7_EDX_TABLE_ENTRY(
+    EXPAND_AS_CPU_FEATURE_C_ASSERT_OFFSET
+);
+#undef Type
+
+typedef union _RTL_CPU_FEATURES_F7_EDX {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        RTL_CPU_FEATURES_F7_EDX_TABLE_ENTRY(
+            EXPAND_AS_CPU_FEATURE_BITFLAG
+        )
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_CPU_FEATURES_F7_EDX;
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F7_EDX) == sizeof(ULONG));
+typedef RTL_CPU_FEATURES_F7_EDX *PRTL_CPU_FEATURES_F7_EDX;
+
+//
+// F81_ECX
+//
+
+#define RTL_CPU_FEATURES_F81_ECX_TABLE(FIRST_ENTRY, \
+                                       ENTRY,       \
+                                       LAST_ENTRY)  \
+    FIRST_ENTRY(LAHFSAHF, 0, 1)                     \
+    ENTRY(_Reserved_1_4_F81_ECX, 1, 4)              \
+    ENTRY(LZCNT, 5, 1)                              \
+    ENTRY(_Reserved_6_7_F81_ECX, 6, 2)              \
+    ENTRY(PREFETCHW, 8, 1)                          \
+    LAST_ENTRY(_Reserved_9_31_F81_ECX, 9, 23)
+
+#define RTL_CPU_FEATURES_F81_ECX_TABLE_ENTRY(ENTRY) \
+    RTL_CPU_FEATURES_F81_ECX_TABLE(ENTRY,           \
+                                   ENTRY,           \
+                                   ENTRY)
+
+#pragma pack(push, 1)
+typedef struct _RTL_CPU_FEATURES_F81_ECX_AS_BYTES {
+    RTL_CPU_FEATURES_F81_ECX_TABLE_ENTRY(EXPAND_AS_CPU_FEATURE_BYTE)
+} RTL_CPU_FEATURES_F81_ECX_AS_BYTES;
+#pragma pack(pop)
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F81_ECX_AS_BYTES) ==
+         sizeof(ULONG) << 3);
+
+#define Type RTL_CPU_FEATURES_F81_ECX_AS_BYTES
+RTL_CPU_FEATURES_F81_ECX_TABLE_ENTRY(
+    EXPAND_AS_CPU_FEATURE_C_ASSERT_OFFSET
+);
+#undef Type
+
+typedef union _RTL_CPU_FEATURES_F81_ECX {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        RTL_CPU_FEATURES_F81_ECX_TABLE_ENTRY(
+            EXPAND_AS_CPU_FEATURE_BITFLAG
+        )
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_CPU_FEATURES_F81_ECX;
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F81_ECX) == sizeof(ULONG));
+typedef RTL_CPU_FEATURES_F81_ECX *PRTL_CPU_FEATURES_F81_ECX;
+
+//
+// F81_EDX
+//
+
+#define RTL_CPU_FEATURES_F81_EDX_TABLE(FIRST_ENTRY, \
+                                       ENTRY,       \
+                                       LAST_ENTRY)  \
+    FIRST_ENTRY(_Reserved_0_10_F81_EDX, 0, 11)      \
+    ENTRY(SYSCALLSYSRET, 11, 1)                     \
+    ENTRY(_Reserved_12_19_F81_EDX, 12, 8)           \
+    ENTRY(EDB, 20, 1)                               \
+    ENTRY(_Reserved_21_25_F81_EDX, 21, 5)           \
+    ENTRY(ONEGBPAGES, 26, 1)                        \
+    ENTRY(RDTSCP_IA32_TSC_AUX, 27, 1)               \
+    ENTRY(_Reserved_28_F81_EDX, 28, 1)              \
+    ENTRY(IA64, 29, 1)                              \
+    LAST_ENTRY(_Reserved_30_31_F81_EDX, 30, 2)
+
+#define RTL_CPU_FEATURES_F81_EDX_TABLE_ENTRY(ENTRY) \
+    RTL_CPU_FEATURES_F81_EDX_TABLE(ENTRY,           \
+                                   ENTRY,           \
+                                   ENTRY)
+
+#pragma pack(push, 1)
+typedef struct _RTL_CPU_FEATURES_F81_EDX_AS_BYTES {
+    RTL_CPU_FEATURES_F81_EDX_TABLE_ENTRY(EXPAND_AS_CPU_FEATURE_BYTE)
+} RTL_CPU_FEATURES_F81_EDX_AS_BYTES;
+#pragma pack(pop)
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F81_EDX_AS_BYTES) ==
+         sizeof(ULONG) << 3);
+
+#define Type RTL_CPU_FEATURES_F81_EDX_AS_BYTES
+RTL_CPU_FEATURES_F81_EDX_TABLE_ENTRY(
+    EXPAND_AS_CPU_FEATURE_C_ASSERT_OFFSET
+);
+#undef Type
+
+typedef union _RTL_CPU_FEATURES_F81_EDX {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        RTL_CPU_FEATURES_F81_EDX_TABLE_ENTRY(
+            EXPAND_AS_CPU_FEATURE_BITFLAG
+        )
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_CPU_FEATURES_F81_EDX;
+C_ASSERT(sizeof(RTL_CPU_FEATURES_F81_EDX) == sizeof(ULONG));
+typedef RTL_CPU_FEATURES_F81_EDX *PRTL_CPU_FEATURES_F81_EDX;
+
+//
+// Define the union of all CPU feature flags we support for x86/x64.
+//
+
+typedef union _CPU_VENDOR {
+    struct {
+        ULONG Unknown:1;
+        ULONG IsIntel:1;
+        ULONG IsAMD:1;
+        ULONG Unused:29;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} CPU_VENDOR;
+typedef CPU_VENDOR *PCPU_VENDOR;
+C_ASSERT(sizeof(CPU_VENDOR) == sizeof(ULONG));
+
+typedef struct _RTL_CPU_FEATURES {
+
+    CPU_VENDOR Vendor;
+    LONG HighestFeatureId;
+    LONG HighestExtendedFeatureId;
+
+    //
+    // AMD-specific features that we set manually.
+    //
+
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG ABM:1;
+        ULONG SSE4A:1;
+        ULONG XOP:1;
+        ULONG TBM:1;
+        ULONG SVM:1;
+        ULONG IBS:1;
+        ULONG LWP:1;
+        ULONG MMXEXT:1;
+        ULONG THREEDNOW:1;
+        ULONG THREEDNOWEXT:1;
+    } AMD;
+
+    //
+    // Intel-specific features that we set manually.
+    //
+
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG HLE:1;
+        ULONG RTM:1;
+        ULONG BMI1:1;
+        ULONG BMI2:1;
+        ULONG LZCNT:1;
+        ULONG POPCNT:1;
+        ULONG SYSCALL:1;
+        ULONG RDTSCP:1;
+    } Intel;
+
+    ULONG Padding;
+
+    union {
+
+        //
+        // F1_ECX
+        // F1_EDX
+        // F7_EBX
+        // F7_ECX
+        // F81_ECX
+        // F81_EDX
+        //
+
+        struct {
+            union {
+                struct {
+                    RTL_CPU_FEATURES_F1_ECX_TABLE_ENTRY(
+                        EXPAND_AS_CPU_FEATURE_BITFLAG
+                    )
+                };
+                RTL_CPU_FEATURES_F1_ECX F1Ecx;
+            };
+            union {
+                struct {
+                    RTL_CPU_FEATURES_F1_EDX_TABLE_ENTRY(
+                        EXPAND_AS_CPU_FEATURE_BITFLAG
+                    )
+                };
+                RTL_CPU_FEATURES_F1_EDX F1Edx;
+            };
+            union {
+                struct {
+                    RTL_CPU_FEATURES_F7_EBX_TABLE_ENTRY(
+                        EXPAND_AS_CPU_FEATURE_BITFLAG
+                    )
+                };
+                RTL_CPU_FEATURES_F7_EBX F7Ebx;
+            };
+            union {
+                struct {
+                    RTL_CPU_FEATURES_F7_ECX_TABLE_ENTRY(
+                        EXPAND_AS_CPU_FEATURE_BITFLAG
+                    )
+                };
+                RTL_CPU_FEATURES_F7_ECX F7Ecx;
+            };
+            union {
+                struct {
+                    RTL_CPU_FEATURES_F81_ECX_TABLE_ENTRY(
+                        EXPAND_AS_CPU_FEATURE_BITFLAG
+                    )
+                };
+                RTL_CPU_FEATURES_F81_ECX F81Ecx;
+            };
+            union {
+                struct {
+                    RTL_CPU_FEATURES_F81_EDX_TABLE_ENTRY(
+                        EXPAND_AS_CPU_FEATURE_BITFLAG
+                    )
+                };
+                RTL_CPU_FEATURES_F81_EDX F81Edx;
+            };
+        };
+
+        INT AsIntArray[6];
+        LONG AsLongArray[6];
+        ULONG AsULongArray[6];
+    };
+
+    //
+    // CPU Brand String.
+    //
+
+    STRING Brand;
+    CHAR BrandBuffer[48];
+
+} RTL_CPU_FEATURES;
+typedef RTL_CPU_FEATURES *PRTL_CPU_FEATURES;
+#endif // defined(_M_AMD64) || defined(_M_X64) || defined(_M_IX86)
+
+
+
 //
 // COM-related typedefs.
 //
@@ -6691,6 +7315,32 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
         };
     };
 
+    //
+    // Inline bit manipulation functions for convenience.
+    //
+
+    union {
+
+#define EXPAND_AS_FUNCTION_POINTER(Upper, Name, Unused3, Unused4) \
+    P##Upper Name;
+        struct {
+            RTL_BIT_MANIPULATION_FUNCTION_TABLE_ENTRY(
+                EXPAND_AS_FUNCTION_POINTER
+            )
+        };
+#undef EXPAND_AS_FUNCTION_POINTER
+
+        RTL_BIT_MANIPULATION_FUNCTIONS RtlBitManipulationFunctions;
+
+    };
+
+    //
+    // CPU Features.
+    //
+
+    RTL_CPU_FEATURES CpuFeatures;
+
+
 #ifdef _RTL_TEST
     PTEST_LOAD_SYMBOLS TestLoadSymbols;
     PTEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES TestLoadSymbolsFromMultipleModules;
@@ -6720,57 +7370,16 @@ FilterLargePageFlags(
 }
 
 FORCEINLINE
-ULONG
-TrailingZeros(
-    _In_ ULONG Integer
+ULONG_PTR
+GetAddressAlignment(
+    _In_ PRTL Rtl,
+    _In_ ULONG_PTR Address
     )
 {
-    return _tzcnt_u32(Integer);
-}
-
-FORCEINLINE
-ULONG
-LeadingZeros(
-    _In_ ULONG Integer
-    )
-{
-    return _lzcnt_u32(Integer);
-}
-
-FORCEINLINE
-ULONGLONG
-TrailingZeros64(
-    _In_ ULONGLONG Integer
-    )
-{
-    return _tzcnt_u64(Integer);
-}
-
-FORCEINLINE
-ULONGLONG
-LeadingZeros64(
-    _In_ ULONGLONG Integer
-    )
-{
-    return _lzcnt_u64(Integer);
-}
-
-FORCEINLINE
-ULONG
-PopulationCount32(
-    _In_ ULONG Integer
-    )
-{
-    return __popcnt(Integer);
-}
-
-FORCEINLINE
-ULONGLONG
-GetAddressAlignment(_In_ PVOID Address)
-{
-    ULONGLONG Integer = (ULONGLONG)Address;
-    ULONGLONG NumTrailingZeros = TrailingZeros64(Integer);
-    return (1ULL << NumTrailingZeros);
+    ULONG_PTR One = 1;
+    ULONG_PTR Integer = Address;
+    ULONG_PTR NumTrailingZeros = Rtl->TrailingZerosPointer(Integer);
+    return (One << NumTrailingZeros);
 }
 
 FORCEINLINE
@@ -6838,11 +7447,12 @@ _Success_(return != 0)
 FORCEINLINE
 BOOL
 AssertAligned(
+    _In_ PRTL Rtl,
     _In_ PVOID Address,
     _In_ USHORT Alignment
     )
 {
-    ULONGLONG CurrentAlignment = GetAddressAlignment(Address);
+    ULONGLONG CurrentAlignment = GetAddressAlignment(Rtl, (ULONG_PTR)Address);
     ULONGLONG ExpectedAlignment = ALIGN_UP(CurrentAlignment, Alignment);
     if (CurrentAlignment < ExpectedAlignment) {
 #ifdef _DEBUG
@@ -6854,15 +7464,15 @@ AssertAligned(
     return TRUE;
 }
 
-#define AssertAligned8(Address)      AssertAligned((PVOID)Address, 8)
-#define AssertAligned16(Address)     AssertAligned((PVOID)Address, 16)
-#define AssertAligned32(Address)     AssertAligned((PVOID)Address, 32)
-#define AssertAligned64(Address)     AssertAligned((PVOID)Address, 64)
-#define AssertAligned512(Address)    AssertAligned((PVOID)Address, 512)
-#define AssertAligned1024(Address)   AssertAligned((PVOID)Address, 1024)
-#define AssertAligned2048(Address)   AssertAligned((PVOID)Address, 2048)
-#define AssertAligned4096(Address)   AssertAligned((PVOID)Address, 4096)
-#define AssertAligned8192(Address)   AssertAligned((PVOID)Address, 8192)
+#define AssertAligned8(Address)      AssertAligned(Rtl, (PVOID)Address, 8)
+#define AssertAligned16(Address)     AssertAligned(Rtl, (PVOID)Address, 16)
+#define AssertAligned32(Address)     AssertAligned(Rtl, (PVOID)Address, 32)
+#define AssertAligned64(Address)     AssertAligned(Rtl, (PVOID)Address, 64)
+#define AssertAligned512(Address)    AssertAligned(Rtl, (PVOID)Address, 512)
+#define AssertAligned1024(Address)   AssertAligned(Rtl, (PVOID)Address, 1024)
+#define AssertAligned2048(Address)   AssertAligned(Rtl, (PVOID)Address, 2048)
+#define AssertAligned4096(Address)   AssertAligned(Rtl, (PVOID)Address, 4096)
+#define AssertAligned8192(Address)   AssertAligned(Rtl, (PVOID)Address, 8192)
 
 #define AssertPageAligned(Address)  AssertAligned4096(Address)
 
@@ -6870,73 +7480,27 @@ FORCEINLINE
 _Success_(return != 0)
 BOOL
 IsAligned(
+    _In_ PRTL Rtl,
     _In_ PVOID Address,
     _In_ USHORT Alignment
     )
 {
-    ULONGLONG CurrentAlignment = GetAddressAlignment(Address);
+    ULONGLONG CurrentAlignment = GetAddressAlignment(Rtl, (ULONG_PTR)Address);
     ULONGLONG ExpectedAlignment = ALIGN_UP(CurrentAlignment, Alignment);
     return CurrentAlignment == ExpectedAlignment;
 }
 
-#define IsAligned8(Address)      IsAligned((PVOID)Address, 8)
-#define IsAligned16(Address)     IsAligned((PVOID)Address, 16)
-#define IsAligned32(Address)     IsAligned((PVOID)Address, 32)
-#define IsAligned64(Address)     IsAligned((PVOID)Address, 64)
-#define IsAligned512(Address)    IsAligned((PVOID)Address, 512)
-#define IsAligned1024(Address)   IsAligned((PVOID)Address, 1024)
-#define IsAligned2048(Address)   IsAligned((PVOID)Address, 2048)
-#define IsAligned4096(Address)   IsAligned((PVOID)Address, 4096)
-#define IsAligned8192(Address)   IsAligned((PVOID)Address, 8192)
+#define IsAligned8(Address)      IsAligned(Rtl, (PVOID)Address, 8)
+#define IsAligned16(Address)     IsAligned(Rtl, (PVOID)Address, 16)
+#define IsAligned32(Address)     IsAligned(Rtl, (PVOID)Address, 32)
+#define IsAligned64(Address)     IsAligned(Rtl, (PVOID)Address, 64)
+#define IsAligned512(Address)    IsAligned(Rtl, (PVOID)Address, 512)
+#define IsAligned1024(Address)   IsAligned(Rtl, (PVOID)Address, 1024)
+#define IsAligned2048(Address)   IsAligned(Rtl, (PVOID)Address, 2048)
+#define IsAligned4096(Address)   IsAligned(Rtl, (PVOID)Address, 4096)
+#define IsAligned8192(Address)   IsAligned(Rtl, (PVOID)Address, 8192)
 
 #define IsPageAligned(Address)  IsAligned4096(Address)
-
-FORCEINLINE
-BOOLEAN
-IsPowerOf2(
-    _In_ ULONGLONG Value
-    )
-{
-    if (Value <= 1) {
-        return FALSE;
-    }
-
-    return ((Value & (Value - 1)) == 0);
-}
-
-FORCEINLINE
-ULONGLONG
-RoundUpPowerOf2(
-    _In_ ULONG Input
-    )
-{
-    if (Input <= 1) {
-        return 2;
-    }
-
-    if (IsPowerOf2(Input)) {
-        return Input;
-    }
-
-    return 1ULL << (32 - LeadingZeros(Input - 1));
-}
-
-FORCEINLINE
-ULONGLONG
-RoundUpNextPowerOf2(
-    _In_ ULONG Input
-    )
-{
-    if (Input <= 1) {
-        return 2;
-    }
-
-    if (IsPowerOf2(Input)) {
-        Input += 1;
-    }
-
-    return 1ULL << (32 - LeadingZeros(Input - 1));
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // SIMD Utilities
@@ -10310,6 +10874,22 @@ RTL_API
 BOOL
 TestExceptionHandler(VOID);
 
+typedef
+HRESULT
+(NTAPI RTL_INITIALIZE_CPU_FEATURES)(
+    _In_ PRTL Rtl
+    );
+typedef RTL_INITIALIZE_CPU_FEATURES *PRTL_INITIALIZE_CPU_FEATURES;
+
+typedef
+HRESULT
+(NTAPI RTL_INITIALIZE_BIT_MANIPULATION_FUNCTION_POINTERS)(
+    _In_ PRTL Rtl
+    );
+typedef RTL_INITIALIZE_BIT_MANIPULATION_FUNCTION_POINTERS
+      *PRTL_INITIALIZE_BIT_MANIPULATION_FUNCTION_POINTERS;
+
+
 RTL_API
 BOOL
 InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
@@ -10350,6 +10930,8 @@ RTL_API ENABLE_PRIVILEGE EnablePrivilege;
 RTL_API GET_MODULE_RTL_PATH GetModuleRtlPath;
 RTL_API INITIALIZE_RTL InitializeRtl;
 RTL_API INITIALIZE_RTL_FILE InitializeRtlFile;
+RTL_API RTL_INITIALIZE_CPU_FEATURES RtlInitializeCpuFeatures;
+RTL_API RTL_INITIALIZE_BIT_MANIPULATION_FUNCTION_POINTERS RtlInitializeBitManipulationFunctionPointers;
 RTL_API LOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;
 RTL_API PREFAULT_PAGES PrefaultPages;
 RTL_API REGISTER_DLL_NOTIFICATION RegisterDllNotification;

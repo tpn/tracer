@@ -79,7 +79,7 @@ Return Value:
     // Load the command template from the command ID.
     //
 
-    CommandTemplate = CommandIdToCommandTemplate(CommandId);
+    CommandTemplate = CommandIdToCommandTemplate(Rtl, CommandId);
     if (!CommandTemplate) {
         return FALSE;
     }
@@ -137,7 +137,7 @@ Return Value:
 
         Bitmap = _bzhi_u32(CommandOptions, NumberOfOptions);
 
-        Count = PopulationCount32(Bitmap);
+        Count = Rtl->PopulationCount32(Bitmap);
 
         if (!Count) {
 
@@ -160,7 +160,7 @@ Return Value:
             // by.
             //
 
-            NumberOfTrailingZeros = TrailingZeros(Bitmap);
+            NumberOfTrailingZeros = Rtl->TrailingZeros32(Bitmap);
             Index = NumberOfTrailingZeros + Shift;
 
             if (Index > NumberOfOptions - 1) {

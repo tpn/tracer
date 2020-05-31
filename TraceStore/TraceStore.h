@@ -1011,38 +1011,48 @@ IsLastTraceStoreFieldRelocsElement(
 FORCEINLINE
 BOOL
 IsAlignedTraceStoreFieldReloc(
+    _In_ PRTL Rtl,
     _In_ PTRACE_STORE_FIELD_RELOC FieldReloc
     )
 {
-    return IsAligned(FieldReloc, TRACE_STORE_FIELD_RELOC_ARRAY_ALIGNMENT);
+    return IsAligned(Rtl, FieldReloc, TRACE_STORE_FIELD_RELOC_ARRAY_ALIGNMENT);
 }
 
 FORCEINLINE
 BOOL
 AssertAlignedTraceStoreFieldReloc(
+    _In_ PRTL Rtl,
     _In_ PTRACE_STORE_FIELD_RELOC FieldReloc
     )
 {
-    return AssertAligned(FieldReloc, TRACE_STORE_FIELD_RELOC_ARRAY_ALIGNMENT);
+    return AssertAligned(Rtl,
+                         FieldReloc,
+                         TRACE_STORE_FIELD_RELOC_ARRAY_ALIGNMENT);
 }
 
 #define TRACE_STORE_FIELD_RELOCS_ARRAY_ALIGNMENT 128
 FORCEINLINE
 BOOL
 IsAlignedTraceStoreFieldRelocs(
+    _In_ PRTL Rtl,
     _In_ PTRACE_STORE_FIELD_RELOCS FieldRelocs
     )
 {
-    return IsAligned(FieldRelocs, TRACE_STORE_FIELD_RELOCS_ARRAY_ALIGNMENT);
+    return IsAligned(Rtl,
+                     FieldRelocs,
+                     TRACE_STORE_FIELD_RELOCS_ARRAY_ALIGNMENT);
 }
 
 FORCEINLINE
 BOOL
 AssertAlignedTraceStoreFieldRelocs(
+    _In_ PRTL Rtl,
     _In_ PTRACE_STORE_FIELD_RELOCS FieldRelocs
     )
 {
-    return AssertAligned(FieldRelocs, TRACE_STORE_FIELD_RELOCS_ARRAY_ALIGNMENT);
+    return AssertAligned(Rtl,
+                         FieldRelocs,
+                         TRACE_STORE_FIELD_RELOCS_ARRAY_ALIGNMENT);
 }
 
 //
@@ -4044,6 +4054,7 @@ TraceStoreTryAcquireLockShared(
 FORCEINLINE
 ADDRESS_BIT_COUNTS
 GetAddressBitCounts(
+    _In_ PRTL Rtl,
     _In_ PVOID BaseAddress,
     _In_range_(3,  43) USHORT RightShift,
     _In_range_(17, 61) USHORT LeftShift
@@ -4056,6 +4067,8 @@ Routine Description:
     address (pointer).
 
 Arguments:
+
+    Rtl - Supplies a pointer to an RTL instance.
 
     BaseAddress - Supplies the address for which the bits are to be calculated.
 
@@ -4098,15 +4111,15 @@ Return Value:
     }
 
     ShiftedRight = Address.QuadPart >> RightShift;
-    Leading = LeadingZeros64(Address.QuadPart);
+    Leading = Rtl->LeadingZeros64(Address.QuadPart);
     Leading -= LeftShift;
 
-    BitCounts.TrailingZeros = (ULONG)TrailingZeros64(ShiftedRight);
+    BitCounts.TrailingZeros = (ULONG)Rtl->TrailingZeros64(ShiftedRight);
     BitCounts.LeadingZeros = (ULONG)Leading;
-    BitCounts.PopulationCount = (ULONG)PopulationCount64(Address.QuadPart);
+    BitCounts.PopulationCount = (ULONG)Rtl->PopulationCount64(Address.QuadPart);
 
-    BitCounts.LowPopulationCount = (ULONG)PopulationCount32(Address.LowPart);
-    BitCounts.HighPopulationCount = (ULONG)PopulationCount32(Address.HighPart);
+    BitCounts.LowPopulationCount = Rtl->PopulationCount32(Address.LowPart);
+    BitCounts.HighPopulationCount = Rtl->PopulationCount32(Address.HighPart);
 
     //
     // Parallel parity calculation lovingly lifted from Hacker's Delight.
@@ -4138,10 +4151,10 @@ Return Value:
 }
 
 #define GetTraceStoreAddressBitCounts(Address) \
-    GetAddressBitCounts(Address, 16, 21)
+    GetAddressBitCounts(Rtl, Address, 16, 21)
 
 #define CalculateRightShiftFromMemoryMap(MemoryMap)          \
-    (USHORT)TrailingZeros64(MemoryMap->MappingSize.QuadPart)
+    (USHORT)Rtl->TrailingZeros64(MemoryMap->MappingSize.QuadPart)
 
 FORCEINLINE
 TRACE_STORE_INDEX
@@ -4443,6 +4456,7 @@ FORCEINLINE
 _Success_(return != 0)
 BOOL
 ValidateFieldRelocationsArray(
+    _In_ PRTL Rtl,
     _In_  PTRACE_STORE_FIELD_RELOCS FieldRelocations,
     _Out_ PUSHORT NumberOfFieldRelocationsElements,
     _Out_ PUSHORT MaximumNumberOfInnerFieldRelocationElements
@@ -4455,6 +4469,8 @@ Routine Description:
     containing TRACE_STORE_FIELD_RELOC structures embedded with it.
 
 Arguments:
+
+    Rtl - Supplies a pointer to an RTL instance.
 
     FieldRelocations - Supplies a pointer to the first element of an array of
         TRACE_STORE_FIELD_RELOCS structures.  An empty element denotes the end
@@ -4521,7 +4537,7 @@ Return Value:
     // Verify alignment.
     //
 
-    if (!IsAlignedTraceStoreFieldRelocs(FieldRelocations)) {
+    if (!IsAlignedTraceStoreFieldRelocs(Rtl, FieldRelocations)) {
         return FALSE;
     }
 
@@ -4563,7 +4579,7 @@ Return Value:
 
             FirstReloc = Relocs->Relocations;
 
-            if (!IsAlignedTraceStoreFieldReloc(FirstReloc)) {
+            if (!IsAlignedTraceStoreFieldReloc(Rtl, FirstReloc)) {
                 return FALSE;
             }
 
