@@ -987,6 +987,11 @@ LoadDbgEng(
         return FALSE;
     }
 
+    //
+    // Temp hack whilst troubleshooting dbgeng loading issues..
+    //
+
+#if 0
     if (!(Rtl->DbgEngModule = LoadLibraryA(Path))) {
         OutputDebugStringA("Rtl: Failed to load dbgeng.");
         return FALSE;
@@ -994,6 +999,12 @@ LoadDbgEng(
         OutputDebugStringA("Rtl: Failed to load dbgeng.");
         return FALSE;
     }
+#else
+    if (!(Rtl->DbgEngModule = LoadLibraryA("dbgeng"))) {
+        OutputDebugStringA("Rtl: Failed to load dbgeng.\n");
+        return FALSE;
+    }
+#endif
 
     if (!(Rtl->DebugCreate = (PDEBUG_CREATE)
         GetProcAddress(Rtl->DbgEngModule, "DebugCreate"))) {
