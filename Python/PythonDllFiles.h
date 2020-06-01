@@ -81,6 +81,7 @@ static CONST PUNICODE_STRING PythonDllFilesW[] = {
     (PUNICODE_STRING)&Python32DllW,
     (PUNICODE_STRING)&Python33DllW,
     (PUNICODE_STRING)&Python34DllW,
+    (PUNICODE_STRING)&Python36DllW,
     (PUNICODE_STRING)&Python35DllW,
     (PUNICODE_STRING)&Python37DllW,
     (PUNICODE_STRING)&Python38DllW,

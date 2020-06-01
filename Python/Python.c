@@ -85,7 +85,7 @@ LoadPythonData(
 
     RESOLVE_STRUCT(_Py_None);
     RESOLVE_STRUCT(_Py_True);
-    RESOLVE_STRUCT(_Py_Zero);
+    TRY_RESOLVE_STRUCT(_Py_Zero);
     TRY_RESOLVE_STRUCT(_Py_False);
 
     //
