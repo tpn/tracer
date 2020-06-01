@@ -58,6 +58,8 @@ Main(VOID)
         "CreateAndInitializeTracerConfigAndRtl()"
     );
 
+    RundownGlobalAtExitFunctions = Rtl->RundownGlobalAtExitFunctions;
+
     //
     // Initialize the TracedPythonSession.  This is the main workhorse that
     // loads all the relevant libraries and preps our Python runtime environment
@@ -81,7 +83,6 @@ Main(VOID)
 
     Python = Session->Python;
     PythonTraceContext = Session->PythonTraceContext;
-    RundownGlobalAtExitFunctions = Rtl->RundownGlobalAtExitFunctions;
 
     //
     // Initialize the __C_specific_handler from Rtl.
