@@ -25,7 +25,11 @@ RtlHeapAllocatorMalloc(
     SIZE_T Size
     )
 {
-    return HeapAlloc(ContextToHeapHandle(Context), 0, Size);
+    return HeapAlloc(
+        ContextToHeapHandle(Context),
+        HEAP_ZERO_MEMORY,
+        Size
+    );
 }
 
 _Use_decl_annotations_
@@ -52,7 +56,12 @@ RtlHeapAllocatorRealloc(
     SIZE_T NewSize
     )
 {
-    return HeapReAlloc(ContextToHeapHandle(Context), 0, Buffer, NewSize);
+    return HeapReAlloc(
+        ContextToHeapHandle(Context),
+        HEAP_ZERO_MEMORY,
+        Buffer,
+        NewSize
+    );
 }
 
 _Use_decl_annotations_
