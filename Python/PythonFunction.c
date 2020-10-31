@@ -1208,7 +1208,7 @@ Return Value:
     if (SelfObject) {
 
         if (SelfObject->Type == Python->PyModule.Type) {
-            __debugbreak();
+            //__debugbreak();
         }
 
         if (SelfObject->Type != Python->PyModule.Type) {
