@@ -36,7 +36,7 @@ from ..wintypes import (
     RTL_DYNAMIC_HASH_TABLE_ENTRY,
 )
 
-from Rtl import (
+from .Rtl import (
     PRTL,
     RTL_FILE,
     PRTL_FILE
