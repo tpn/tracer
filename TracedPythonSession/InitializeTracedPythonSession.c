@@ -732,13 +732,19 @@ Return Value:
     LoadingCompleteEvent = Session->TraceContext->LoadingCompleteEvent;
 
     //
-    // Attempt to load the relevant Python DLL for this session.  Look in our
-    // module's directory first, which will pick up the common case where we
-    // live in the same directory as python.exe, and thus, the relevant Python
-    // DLL (e.g. python27.dll, python35.dll etc).
+    // Attempt to load the relevant Python DLL for this session.  Prefer the
+    // user-supplied Python directory (obtained via the registry) if available,
+    // otherwise, use the directory of this containing module (this will pick
+    // up the case where we live in the same directory as python.exe, and thus,
+    // the relevant Python DLL (e.g. python27.dll, python35.dll etc)).
     //
 
-    Directory = &Session->OwningModulePath->Directory;
+    Directory = &TracerConfig->Paths.PythonDirectory;
+
+    if (!IsValidMinimumDirectoryUnicodeString(Directory)) {
+        Directory = &Session->OwningModulePath->Directory;
+    }
+
     Success = Session->FindPythonDllAndExe(
         Rtl,
         Allocator,

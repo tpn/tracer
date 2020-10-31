@@ -280,6 +280,12 @@ typedef struct _Struct_size_bytes_(Size) _TRACER_PATHS {
     UNICODE_STRING BaseTraceDirectory;
 
     //
+    // Optional Python directory, read from the registry.
+    //
+
+    UNICODE_STRING PythonDirectory;
+
+    //
     // Optional debugger settings.
     //
 

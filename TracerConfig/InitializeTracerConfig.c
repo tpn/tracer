@@ -620,6 +620,12 @@ Return Value:
     READ_REG_SZ_PATH(BaseTraceDirectory, Mandatory);
 
     //
+    // Load the optional Python directory.
+    //
+
+    READ_REG_SZ_PATH(PythonDirectory, Optional);
+
+    //
     // Load the optional DebuggerSettingsXmlPath.
     //
 
