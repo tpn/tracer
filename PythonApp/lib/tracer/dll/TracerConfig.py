@@ -123,6 +123,7 @@ class TRACER_PATHS(Structure):
         ('Padding', USHORT),
         ('InstallationDirectory', UNICODE_STRING),
         ('BaseTraceDirectory', UNICODE_STRING),
+        ('PythonDirectory', UNICODE_STRING),
         ('DebuggerSettingsXmlPath', UNICODE_STRING),
         ('AsmDllPath', UNICODE_STRING),
         ('RtlDllPath', UNICODE_STRING),
