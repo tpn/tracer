@@ -633,11 +633,6 @@ Error:
     Success = FALSE;
 
 End:
-    if (CryptProv) {
-        CryptReleaseContext(CryptProv, 0);
-        CryptProv = 0;
-    }
-
     if (CryptHashMD5) {
         CryptDestroyHash(CryptHashMD5);
         CryptHashMD5 = 0;
@@ -646,6 +641,11 @@ End:
     if (CryptHashSHA1) {
         CryptDestroyHash(CryptHashSHA1);
         CryptHashSHA1 = 0;
+    }
+
+    if (CryptProv) {
+        CryptReleaseContext(CryptProv, 0);
+        CryptProv = 0;
     }
 
     if (SourceContent) {
