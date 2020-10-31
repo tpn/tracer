@@ -235,27 +235,27 @@ mainCRTStartup()
 #if 1
     ULONGLONG Value;
 
-    Value = RoundUpPowerOf2(0);
-    Value = RoundUpPowerOf2(2);
-    Value = RoundUpPowerOf2(3);
-    Value = RoundUpPowerOf2(31);
-    Value = RoundUpPowerOf2(32);
-    Value = RoundUpPowerOf2(33);
+    Value = RoundUpPowerOfTwo(0);
+    Value = RoundUpPowerOfTwo(2);
+    Value = RoundUpPowerOfTwo(3);
+    Value = RoundUpPowerOfTwo(31);
+    Value = RoundUpPowerOfTwo(32);
+    Value = RoundUpPowerOfTwo(33);
 
-    Value = RoundUpNextPowerOf2(31);
-    Value = RoundUpNextPowerOf2(32);
-    Value = RoundUpNextPowerOf2(32);
+    Value = RoundUpNextPowerOfTwo(31);
+    Value = RoundUpNextPowerOfTwo(32);
+    Value = RoundUpNextPowerOfTwo(32);
 
-    ASSERT(RoundUpPowerOf2(0) == 2);
-    ASSERT(RoundUpPowerOf2(2) == 2);
-    ASSERT(RoundUpPowerOf2(3) == 4);
-    ASSERT(RoundUpPowerOf2(31) == 32);
-    ASSERT(RoundUpPowerOf2(32) == 32);
-    ASSERT(RoundUpPowerOf2(33) == 64);
+    ASSERT(RoundUpPowerOfTwo(0) == 2);
+    ASSERT(RoundUpPowerOfTwo(2) == 2);
+    ASSERT(RoundUpPowerOfTwo(3) == 4);
+    ASSERT(RoundUpPowerOfTwo(31) == 32);
+    ASSERT(RoundUpPowerOfTwo(32) == 32);
+    ASSERT(RoundUpPowerOfTwo(33) == 64);
 
-    ASSERT(RoundUpNextPowerOf2(31) == 32);
-    ASSERT(RoundUpNextPowerOf2(32) == 64);
-    ASSERT(RoundUpNextPowerOf2(32) == 64);
+    ASSERT(RoundUpNextPowerOfTwo(31) == 32);
+    ASSERT(RoundUpNextPowerOfTwo(32) == 64);
+    ASSERT(RoundUpNextPowerOfTwo(32) == 64);
 
 #endif
 

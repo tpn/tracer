@@ -76,7 +76,7 @@ IsValidDebugEngineCommandId(
         (CommandId == ExamineSymbolsCommandId) || (
             CommandId >= UnassembleFunctionCommandId &&
             CommandId < DebugEngineInvalidCommandId &&
-            IsPowerOf2(CommandId)
+            IsPowerOfTwo(CommandId)
         )
     );
 }

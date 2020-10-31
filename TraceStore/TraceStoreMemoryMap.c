@@ -123,7 +123,7 @@ Return Value:
         NumberOfMaps *= Multiplier;
     }
 
-    if (!IsPowerOf2(NumberOfMaps)) {
+    if (!IsPowerOfTwo(NumberOfMaps)) {
         __debugbreak();
         return FALSE;
     }

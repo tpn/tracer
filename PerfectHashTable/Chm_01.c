@@ -205,11 +205,11 @@ RetryWithLargerTableSize:
             //
 
             NumberOfVertices.QuadPart = (
-                RoundUpPowerOf2(NumberOfVertices.LowPart)
+                RoundUpPowerOfTwo(NumberOfVertices.LowPart)
             );
 
             NumberOfEdges.QuadPart = (
-                RoundUpPowerOf2(NumberOfEdges.LowPart)
+                RoundUpPowerOfTwo(NumberOfEdges.LowPart)
             );
 
         }
@@ -243,7 +243,7 @@ RetryWithLargerTableSize:
             // Round up the edges to a power of 2.
             //
 
-            NumberOfEdges.QuadPart = RoundUpPowerOf2(NumberOfEdges.LowPart);
+            NumberOfEdges.QuadPart = RoundUpPowerOfTwo(NumberOfEdges.LowPart);
 
             //
             // Make sure we haven't overflowed.
@@ -257,7 +257,7 @@ RetryWithLargerTableSize:
             //
 
             NumberOfVertices.QuadPart = (
-                RoundUpNextPowerOf2(NumberOfEdges.LowPart)
+                RoundUpNextPowerOfTwo(NumberOfEdges.LowPart)
             );
 
         }
@@ -610,19 +610,19 @@ RetryWithLargerTableSize:
     Dim->NumberOfVertices = NumberOfVertices.LowPart;
 
     Dim->NumberOfEdgesPowerOf2Exponent = (BYTE)(
-        TrailingZeros64(RoundUpPowerOf2(NumberOfEdges.LowPart))
+        TrailingZeros64(RoundUpPowerOfTwo(NumberOfEdges.LowPart))
     );
 
     Dim->NumberOfEdgesNextPowerOf2Exponent = (BYTE)(
-        TrailingZeros64(RoundUpNextPowerOf2(NumberOfEdges.LowPart))
+        TrailingZeros64(RoundUpNextPowerOfTwo(NumberOfEdges.LowPart))
     );
 
     Dim->NumberOfVerticesPowerOf2Exponent = (BYTE)(
-        TrailingZeros64(RoundUpPowerOf2(NumberOfVertices.LowPart))
+        TrailingZeros64(RoundUpPowerOfTwo(NumberOfVertices.LowPart))
     );
 
     Dim->NumberOfVerticesNextPowerOf2Exponent = (BYTE)(
-        TrailingZeros64(RoundUpNextPowerOf2(NumberOfVertices.LowPart))
+        TrailingZeros64(RoundUpNextPowerOfTwo(NumberOfVertices.LowPart))
     );
 
     //

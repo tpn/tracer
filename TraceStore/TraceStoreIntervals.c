@@ -82,7 +82,7 @@ Return Value:
         Totals->NumberOfRecords.QuadPart
     );
 
-    if (!IsPowerOf2(RecordSizeInBytes)) {
+    if (!IsPowerOfTwo(RecordSizeInBytes)) {
         __debugbreak();
         Success = FALSE;
         goto End;

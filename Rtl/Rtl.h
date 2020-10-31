@@ -6719,50 +6719,11 @@ FilterLargePageFlags(
     }
 }
 
-FORCEINLINE
-ULONG
-TrailingZeros(
-    _In_ ULONG Integer
-    )
-{
-    return _tzcnt_u32(Integer);
-}
+//
+// Ugly hack to work around CPUs without LZCNT or BMI.
+//
 
-FORCEINLINE
-ULONG
-LeadingZeros(
-    _In_ ULONG Integer
-    )
-{
-    return _lzcnt_u32(Integer);
-}
-
-FORCEINLINE
-ULONGLONG
-TrailingZeros64(
-    _In_ ULONGLONG Integer
-    )
-{
-    return _tzcnt_u64(Integer);
-}
-
-FORCEINLINE
-ULONGLONG
-LeadingZeros64(
-    _In_ ULONGLONG Integer
-    )
-{
-    return _lzcnt_u64(Integer);
-}
-
-FORCEINLINE
-ULONG
-PopulationCount32(
-    _In_ ULONG Integer
-    )
-{
-    return __popcnt(Integer);
-}
+#include "BitManipulationInline.h"
 
 FORCEINLINE
 ULONGLONG
@@ -6890,53 +6851,6 @@ IsAligned(
 #define IsAligned8192(Address)   IsAligned((PVOID)Address, 8192)
 
 #define IsPageAligned(Address)  IsAligned4096(Address)
-
-FORCEINLINE
-BOOLEAN
-IsPowerOf2(
-    _In_ ULONGLONG Value
-    )
-{
-    if (Value <= 1) {
-        return FALSE;
-    }
-
-    return ((Value & (Value - 1)) == 0);
-}
-
-FORCEINLINE
-ULONGLONG
-RoundUpPowerOf2(
-    _In_ ULONG Input
-    )
-{
-    if (Input <= 1) {
-        return 2;
-    }
-
-    if (IsPowerOf2(Input)) {
-        return Input;
-    }
-
-    return 1ULL << (32 - LeadingZeros(Input - 1));
-}
-
-FORCEINLINE
-ULONGLONG
-RoundUpNextPowerOf2(
-    _In_ ULONG Input
-    )
-{
-    if (Input <= 1) {
-        return 2;
-    }
-
-    if (IsPowerOf2(Input)) {
-        Input += 1;
-    }
-
-    return 1ULL << (32 - LeadingZeros(Input - 1));
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // SIMD Utilities
