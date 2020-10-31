@@ -701,18 +701,18 @@ UpdateMaxRefCounts(
         }
     }
 
-    if (_Py_ZeroStruct->ReferenceCount > Context->MaxZeroRefCount.QuadPart) {
+    if (_Py_ZeroStruct != NULL &&
+        (_Py_ZeroStruct->ReferenceCount > Context->MaxZeroRefCount.QuadPart))
+    {
         Context->MaxZeroRefCount.QuadPart = _Py_ZeroStruct->ReferenceCount;
         if (Context->MaxZeroRefCount.HighPart) {
             __debugbreak();
         }
     }
 
-    if (!_Py_FalseStruct) {
-        return;
-    }
-
-    if (_Py_FalseStruct->ReferenceCount > Context->MaxFalseRefCount.QuadPart) {
+    if (_Py_FalseStruct != NULL &&
+        (_Py_FalseStruct->ReferenceCount > Context->MaxFalseRefCount.QuadPart))
+    {
         Context->MaxFalseRefCount.QuadPart = _Py_FalseStruct->ReferenceCount;
         if (Context->MaxFalseRefCount.HighPart) {
             __debugbreak();
