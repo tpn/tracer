@@ -1129,7 +1129,7 @@ class TRACE_STORE(Structure):
     @property
     def number_of_records(self):
         assert self.struct_type
-        return self.mapped_size / sizeof(self.struct_type)
+        return int(self.mapped_size / sizeof(self.struct_type))
 
     @property
     def as_array(self):
@@ -1384,7 +1384,7 @@ class METADATA_STORE(TRACE_STORE):
     @property
     def number_of_records(self):
         assert self.struct_type
-        return self.mapped_size / sizeof(self.struct_type)
+        return int(self.mapped_size / sizeof(self.struct_type))
 
     @property
     def as_array(self):
