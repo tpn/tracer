@@ -1207,10 +1207,6 @@ Return Value:
 
     if (SelfObject) {
 
-        if (SelfObject->Type == Python->PyModule.Type) {
-            //__debugbreak();
-        }
-
         if (SelfObject->Type != Python->PyModule.Type) {
 
             ClassNameBuffer = SelfObject->Type->Name;
