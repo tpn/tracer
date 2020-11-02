@@ -96,7 +96,14 @@ FileIdExtdDirectoryRestartInfo = 0x14
 #===============================================================================
 
 class Structure(ctypes.Structure):
-    _exclude = ('Unused', 'Padding')
+    _exclude = (
+        'Dummy',
+        'Unused',
+        'Padding',
+        'Reserved',
+    )
+
+    _repr_depth = 0
 
     def _field_names(self):
         return (f[0] for f in self._fields_)
@@ -109,20 +116,30 @@ class Structure(ctypes.Structure):
         }
 
     def __repr__(self):
-        q = lambda v: (v or '') if (not v or isinstance(v, int)) else '"%s"' % v
-        return "<%s %s>" % (
-            self.__class__.__name__,
-            ', '.join(
-                '%s=%s' % (k, q(v))
-                    for (k, v) in (
-                        (k, getattr(self, k))
-                            for k in self._field_names() if (
-                                not k.startswith(self._exclude) and
-                                not k[0].islower()
-                            )
-                    )
+        assert Structure._repr_depth >= 0
+        Structure._repr_depth = Structure._repr_depth + 1
+        fields = (
+            f for f in self._field_names() if (
+                not f.startswith(self._exclude) and (
+                    not f[0].islower() or
+                    f[0] == '_'
                 )
+            )
         )
+        items = []
+        for field in fields:
+            raw = getattr(self, field)
+            if not raw or isinstance(raw, int):
+                friendly = raw
+            else:
+                friendly = f'"{raw}"'
+            items.append((field, friendly))
+
+        indent = Structure._repr_depth * '    '
+        items = ',\n'.join(f'{indent}{k}={v}' for (k, v) in items)
+        assert Structure._repr_depth >= 1
+        Structure._repr_depth = Structure._repr_depth - 1
+        return f'<{self.__class__.__name__}\n{items}>'
 
     @classmethod
     def _get_numpy_dtype(cls):
@@ -263,6 +280,16 @@ class CRITICAL_SECTION(Structure):
     ]
 PCRITICAL_SECTION = POINTER(CRITICAL_SECTION)
 
+def _counted_string_to_str(obj, encoding):
+    if obj.Length == 0:
+        return ''
+    return obj.Buffer[:obj.Length].decode(encoding)
+
+def _counted_string_to_repr(obj, encoding):
+    if obj.Length == 0:
+        return "''"
+    return obj.Buffer[:obj.Length].decode(encoding)
+
 class UNICODE_STRING(Structure):
     _fields_ = [
         ('Length', USHORT),
@@ -270,9 +297,9 @@ class UNICODE_STRING(Structure):
         ('Buffer', PWSTR),
     ]
     def __str__(self):
-        return self.Buffer if self.Length > 0 else ''
+        return _counted_string_to_str(self, 'utf-16')
     def __repr__(self):
-        return repr(self.Buffer) if self.Length > 0 else "''"
+        return _counted_string_to_repr(self, 'utf-16')
 PUNICODE_STRING = POINTER(UNICODE_STRING)
 PPUNICODE_STRING = POINTER(PUNICODE_STRING)
 
@@ -283,9 +310,9 @@ class STRING(Structure):
         ('Buffer', PSTR),
     ]
     def __str__(self):
-        return self.Buffer if self.Length > 0 else ''
+        return _counted_string_to_str(self, 'utf-8')
     def __repr__(self):
-        return repr(self.Buffer) if self.Length > 0 else "''"
+        return _counted_string_to_repr(self, 'utf-8')
 PSTRING = POINTER(STRING)
 PPSTRING = POINTER(PSTRING)
 
