@@ -109,10 +109,8 @@ PyTraceEvent2(
     //
 
     TraceCallStack = (
-        Context->Flags.TraceCallStack && (
-            EventTraits->IsCall ||
-            EventTraits->IsReturn
-        )
+        Context->Flags.TraceCallStack &&
+        EventTraitsIsCallStackEvent(*EventTraits)
     );
 
     if (TraceCallStack) {

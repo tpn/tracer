@@ -319,7 +319,20 @@ EventTraitsDecrementCallDepth(
     //
 
     return (
-        (EventTraits.IsReturn == 1) ||
+        EventTraits.IsReturn ||
+        (EventTraits.AsEventType == TraceEventType_PyTrace_C_EXCEPTION)
+    );
+}
+
+FORCEINLINE
+BOOLEAN
+EventTraitsIsCallStackEvent(
+    _In_ PYTHON_EVENT_TRAITS EventTraits
+    )
+{
+    return (
+        EventTraits.IsCall ||
+        EventTraits.IsReturn ||
         (EventTraits.AsEventType == TraceEventType_PyTrace_C_EXCEPTION)
     );
 }
