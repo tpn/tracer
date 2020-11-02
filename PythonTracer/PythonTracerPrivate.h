@@ -298,6 +298,33 @@ InitializeEventTraits(
 }
 
 FORCEINLINE
+BOOLEAN
+EventTraitsIncrementCallDepth(
+    _In_ PYTHON_EVENT_TRAITS EventTraits
+    )
+{
+    return EventTraits.IsCall;
+}
+
+FORCEINLINE
+BOOLEAN
+EventTraitsDecrementCallDepth(
+    _In_ PYTHON_EVENT_TRAITS EventTraits
+    )
+{
+
+    //
+    // We need to decrement the call depth if we're a return type, or this is a
+    // C exception (as they don't generate return calls).
+    //
+
+    return (
+        (EventTraits.IsReturn == 1) ||
+        (EventTraits.AsEventType == TraceEventType_PyTrace_C_EXCEPTION)
+    );
+}
+
+FORCEINLINE
 _Check_return_
 _Success_(return != 0)
 BOOL
@@ -341,9 +368,9 @@ InitializePythonTraceEvent(
         // accordingly if we're a call/return.
         //
 
-        if (EventTraits.IsCall) {
+        if (EventTraitsIncrementCallDepth(EventTraits)) {
             Context->Depth++;
-        } else if (EventTraits.IsReturn) {
+        } else if (EventTraitsDecrementCallDepth(EventTraits)) {
             Context->Depth--;
         }
     }
