@@ -110,7 +110,12 @@ Return Value:
 
     AllocationTimestampStore = TraceStore->AllocationTimestampStore;
 
-    if (AllocationTimestampStore->Totals->NumberOfAllocations.QuadPart !=
+    //
+    // Invariant check: the number of intervals should be less than or equal to
+    // the number of allocation timestamps.
+    //
+
+    if (AllocationTimestampStore->Totals->NumberOfAllocations.QuadPart <
         NumberOfAllocations) {
         __debugbreak();
         Success = FALSE;

@@ -116,8 +116,10 @@ class Structure(ctypes.Structure):
                 '%s=%s' % (k, q(v))
                     for (k, v) in (
                         (k, getattr(self, k))
-                            for k in self._field_names()
-                                if not k.startswith(self._exclude)
+                            for k in self._field_names() if (
+                                not k.startswith(self._exclude) and
+                                not k[0].islower()
+                            )
                     )
                 )
         )
